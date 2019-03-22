@@ -1,12 +1,32 @@
 #' Suspend All Logging
 #'
 #' Completely disable logging for all loggers. This is for example useful for
-#' automated test code.
+#' automated test code. `suspend_logging()` globally disables all logging with
+#' lgr until `unsuspend_logging()` is invoked, while `without_logging()` and
+#' `with_logging()` temporarily disable/enable logging.
 #'
 #' @return
 #'   `suspend_logging()` and `unsuspend_logging()` return `NULL` (invisibly),
-#'   `without_logging` returns whatever `code` returns
+#'   `without_logging()` and `with_logging()` returns whatever `code` returns.
 #' @export
+#' @examples
+#' lg <- get_logger("test")
+#'
+#' # temporarily disable logging
+#' lg$fatal("foo")
+#' without_logging({
+#'   lg$info("everything in this codeblock will be suppressed")
+#'   lg$fatal("bar")
+#' })
+#'
+#' # globally disable logging
+#' suspend_logging()
+#' lg$fatal("bar")
+#' with_logging(lg$fatal("foo"))  # log anyways
+#'
+#' # globally enable logging again
+#' unsuspend_logging()
+#' lg$fatal("foo")
 suspend_logging <- function(){
   options("lgr.logging_suspended" = TRUE)
   invisible()
@@ -28,18 +48,26 @@ unsuspend_logging <- function(){
 #' @rdname suspend_logging
 #' @param code Any \R code
 #' @export
-#' @examples
-#' without_logging({
-#'   FATAL("FOO")
-#'   INFO("BAR")
-#' })
-#'
 without_logging <- function(code){
   old <- getOption("lgr.logging_suspended")
   on.exit(options(lgr.logging_suspended = old))
   suspend_logging()
   force(code)
 }
+
+
+
+
+
+#' @rdname suspend_logging
+#' @export
+with_logging <- function(code){
+  old <- getOption("lgr.logging_suspended")
+  on.exit(options(lgr.logging_suspended = old))
+  unsuspend_logging()
+  force(code)
+}
+
 
 
 
@@ -72,13 +100,8 @@ with_log_level <- function(
   level <- standardize_log_level(level)
   force(level)
 
-  # fix the caller
-  caller <- get_caller(-2L)
-  force(caller)
-
   set_level <- function(event){
     event[["level"]]  <- level
-    event[["caller"]] <- caller
     TRUE
   }
 
@@ -114,11 +137,6 @@ with_log_value <- function(
   logger = lgr::lgr
 ){
   assert(is_equal_length(names(values), values))
-
-  # fix the caller
-  if (!"caller" %in% names(values)){
-    values[["caller"]] <- get_caller(-2L)
-  }
 
   set_level <- function(event){
     for (i in seq_along(values)){

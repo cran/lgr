@@ -8,7 +8,15 @@
 #' Loggers is only necessary if you want to take advantage of hierarchical
 #' logging as outlined in `vignette("lgr", package = "lgr")`.
 #'
-#' @eval r6_usage(Logger)
+#'
+#' @section Usage:
+#'
+#' ```
+#' # Cannonical way to initialize a new Logger (see "Creating Loggers")
+#' lg <- get_logger("logger")
+#' ```
+#'
+#' @eval r6_usage(Logger, name = "lg", header = "# R6 constructor (not recommended for productive use)")
 #'
 #' @section Creating Loggers:
 #'
@@ -17,15 +25,28 @@
 #' needs to be configured (new Appenders added/removed, Layouts modified,
 #' etc...).
 #'
+#' Loggers should never be instantiated directly with `Logger$new()` but rather
+#' via `get_logger("name")`. If `"name"` does not exist, a new
+#' Logger with that name will be created, otherwise the function returns a
+#' Reference to the existing Logger.
+#'
+#' The `name` is potentially a `/` separated hierarchical value like
+#' `foo/bar/baz`. Loggers further down the hierarchy are children of the loggers
+#' above.
+#'
+#' All calls to `get_logger()` with the same name return the same Logger
+#' instance. This means that Logger instances never need to be passed between
+#' different parts of an application.
+#'
 #' If you just want to log to an additional output (like a log file), you want
 #' a new [Appender], not a new Logger.
 #'
 #' @inheritSection Filterable Fields
 #' @section Fields:
 #'
-#' You can either specify these fields in `Logger$new()` or modify them after
-#' creation with setter functions of the form `logger$set_<fieldname>(value)`
-#' (see examples)
+#' You can modify the fields of an existing Logger with
+#' `logger$set_<fieldname>(value)` (see examples). Another way to configure
+#' loggers is via its `$config()` method.
 #'
 #' \describe{
 #'   \item{`name`, `set_name(x)`}{`character` scalar. A name for the Logger that should be
@@ -45,10 +66,6 @@
 #'   \item{`threshold`, `set_threshold(level)`}{`character` or `integer` scalar.
 #'   The minimum [log level][log_levels] that triggers this Logger}
 #'
-#'   \item{`parent`, `set_parent(logger)`}{a `Logger`. Usually the root logger.
-#'   Can also be `NULL`, but all Loggers must be descendants of the root logger
-#'   for lgr to work as intended.}
-#'
 #'   \item{`exception_handler`, `set_exception_handler()`}{a `function` that
 #'   takes a single argument `e`. The function used to handle errors that occur
 #'   during logging. Defaults to demoting errors to [warnings].}
@@ -66,15 +83,12 @@
 #' \describe{
 #'   \item{`ancestry`}{A named `logical` vector of containing
 #'   the propagate value of each Logger upper the inheritance tree. The names
-#'   are the names of the appenders.}
+#'   are the names of the appenders. `ancestry` is an S3 class with a custom
+#'   `format()`/`print()` method, so if you want to use the plain logical
+#'   vector use `unclass(lg$ancestry)`}
 #'
 #'   \item{`inherited_appenders`}{A `list` of all inherited
 #'   appenders from ancestral Loggers of the current Logger}
-#'
-#'   \item{`full_name`}{`character` scalar. The full or *qualified* name of
-#'     the logger: The name of the logger and all loggers it inherits from
-#'     (except for the root logger)
-#'    }
 #'
 #'   \item{`last_event`}{The last LogEvent produced by the current Logger}
 #' }
@@ -119,6 +133,14 @@
 #'     filters.
 #'   }
 #'
+#'   \item{`config(cfg  = NULL, file = NULL, text = NULL`}{Load a Logger
+#'     configuration. `cfg` can be either a special list object, the path to
+#'     a YAML config file, or a character scalar containing YAML. The arguments
+#'     `file` and `text` can used alternatively and enforce that the supplied
+#'     argument is of the specified type.
+#'     See [logger_config] for details.
+#'   }
+#'
 #'   \item{`add_appender(appender, name = NULL)`, `remove_appender(pos)`}{
 #'     Add or remove an [Appender]. Supplying a `name` is optional but
 #'     recommended. After adding an Appender with
@@ -127,8 +149,10 @@
 #'      remove an Appender by position or name.
 #'    }
 #'
-#'    \item{`spawn(...)`}{Spawn a child Logger. `lg <- lgr$spawn("mylogger")` is
-#'      equivalent to `lg <- Logger$new("mylogger", parent = lgr)`}
+#'    \item{`spawn(...)`}{Spawn a child Logger.
+#'      `get_logger("foo/bar")$spawn("baz")` is equivalent to
+#'      `get_logger("foo/bar/baz")`, but can be convenient for programmatic use
+#'      when the name of the parent Logger is not known.}
 #' }
 #'
 #'
@@ -168,10 +192,10 @@
 #' readLines(tf)
 #'
 #' # This logger's print() method depicts this relationship
-#' lg2 <- Logger$new("child", parent = lg)
+#' lg2 <- Logger$new("lg/child")
 #' print(lg2)
 #' print(lg2$ancestry)
-#' print(lg2$full_name)
+#' print(lg2$name)
 #'
 #' # use formatting strings and custom fields
 #' tf2 <- tempfile()
@@ -205,9 +229,8 @@ Logger <- R6::R6Class(
     initialize = function(
       name = "(unnamed logger)",
       appenders = list(),
-      threshold = 400L,
+      threshold = NULL,
       filters = list(),
-      parent = lgr::lgr,
       exception_handler = default_exception_handler,
       propagate = TRUE
     ){
@@ -220,29 +243,16 @@ Logger <- R6::R6Class(
         )
       }
 
-      self$set_appenders(appenders)
-      self$set_exception_handler(exception_handler)
-      self$set_parent(parent)
       self$set_name(name)
+      private$.last_event <- LogEvent$new(self)
+
+      self$set_threshold(threshold)
+      self$set_appenders(appenders)
       self$set_propagate(propagate)
       self$set_filters(filters)
-      private$.last_event <- LogEvent$new(self)
-      self$set_threshold(threshold)
+      self$set_exception_handler(exception_handler)
 
       invisible(self)
-    },
-
-
-    finalize = function(){
-      # ensure appenders are destroyed before logger is destroyed so that the
-      # finalize method of the appenders can still access the logger if it
-      # wants to
-      for (i in rev(seq_along(self$appenders))){
-        self$remove_appender(i)
-      }
-
-      gc()  # ensure that finalizers of appenders are executed now
-      invisible()
     },
 
 
@@ -253,7 +263,7 @@ Logger <- R6::R6Class(
       timestamp = Sys.time(),
       caller = get_caller(-7)
     ){
-      if (identical(get(".threshold", envir = private), 0L)) return(NULL)
+      if (identical(get("threshold", envir = self), 0L)) return(NULL)
 
       tryCatch({
         # preconditions
@@ -265,7 +275,7 @@ Logger <- R6::R6Class(
 
         # Check if LogEvent should be created
         if (
-          identical(level[[1]] > get(".threshold", envir = private), TRUE) ||
+          identical(level[[1]] > get("threshold", envir = self), TRUE) ||
           identical(getOption("lgr.logging_suspended"), TRUE)
         ){
           return(invisible(msg))
@@ -309,8 +319,8 @@ Logger <- R6::R6Class(
                 caller = caller,
                 msg = msg
               ),
-                dots[!not_named]
-              )
+              dots[!not_named]
+            )
           }
         }
 
@@ -334,13 +344,13 @@ Logger <- R6::R6Class(
 
         invisible(msg)
       },
-        error = get("handle_exception", envir = self)
+      error = get("handle_exception", envir = self)
       )
     },
 
 
     fatal = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get(".threshold", envir = private) < 100L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 100L)) return(NULL)
 
       get("log", envir = self)(
         msg = msg,
@@ -352,7 +362,7 @@ Logger <- R6::R6Class(
     },
 
     error = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get(".threshold", envir = private) < 200L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 200L)) return(NULL)
 
       get("log", envir = self)(
         msg = msg,
@@ -364,7 +374,7 @@ Logger <- R6::R6Class(
     },
 
     warn = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get(".threshold", envir = private) < 300L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 300L)) return(NULL)
 
       get("log", envir = self)(
         msg = msg,
@@ -376,7 +386,7 @@ Logger <- R6::R6Class(
     },
 
     info = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get(".threshold", envir = private) < 400L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 400L)) return(NULL)
 
       get("log", envir = self)(
         msg = msg,
@@ -388,7 +398,7 @@ Logger <- R6::R6Class(
     },
 
     debug = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get(".threshold", envir = private) < 500L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 500L)) return(NULL)
 
       get("log", envir = self)(
         msg = msg,
@@ -400,7 +410,7 @@ Logger <- R6::R6Class(
     },
 
     trace = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get(".threshold", envir = private) < 600L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 600L)) return(NULL)
 
       get("log", envir = self)(
         msg = msg,
@@ -410,6 +420,48 @@ Logger <- R6::R6Class(
         ...
       )
     },
+
+
+    config = function(
+      cfg  = NULL,
+      file = NULL,
+      text = NULL
+    ){
+      assert(
+        is.null(cfg) + is.null(file) + is.null(text) >= 2,
+        "You can only specify one of `cfg`, `file` and `text`."
+      )
+
+      if (!is.null(cfg)){
+        cfg <- as_logger_config(cfg)
+
+      } else if (!is.null(file)){
+        assert(
+          is_scalar_character(file) && !grepl("\n", file) && file.exists(file),
+          "`file` is not a valid path to a readable file"
+        )
+        cfg <- as_logger_config(file)
+
+      } else if (!is.null(text)){
+        assert(
+          is_scalar_character(text) && grepl("\n", text),
+          "`text` must be a character scalar containing valid YAML"
+        )
+        cfg <- as_logger_config(text)
+
+      } else {
+        cfg <- as_logger_config()
+      }
+
+      self$set_threshold(cfg$threshold)
+      self$set_appenders(cfg$appenders)
+      self$set_propagate(cfg$propagate)
+      self$set_filters(cfg$filters)
+      self$set_exception_handler(cfg$exception_handler)
+
+      self
+    },
+
 
     add_appender = function(
       appender,
@@ -474,34 +526,23 @@ Logger <- R6::R6Class(
       invisible(self)
     },
 
-    set_parent = function(logger){
-      assert(is.null(logger) || inherits(logger, "Logger"))
-      private$.parent <- logger
-      invisible(self)
-    },
-
 
     set_threshold = function(level){
-      level <- standardize_threshold(level)
-      private$.threshold <- as.integer(level)
+
+      if (!is.null(level)){
+        level <- standardize_threshold(level)
+      }
+
+      private[[".threshold"]] <- level
       invisible(self)
     },
 
 
     set_appenders = function(x){
-      if (is.null(x)){
-        private$.appenders <- list()
-        return(invisible())
-      }
-      if (inherits(x, "Appender"))  x <- list(x)
 
-      assert(
-        is.list(x) && all(vapply(x, inherits, TRUE, "Appender")),
-        "'appenders' must either be a single Appender, a list thereof, or ",
-        "NULL for no appenders."
-      )
+      x <- standardize_appenders_list(x)
 
-      private$.appenders <- list()
+      private[[".appenders"]] <- list()
 
       for (i in seq_along(x))
         self$add_appender(x[[i]], name = names(x)[[i]])
@@ -510,8 +551,8 @@ Logger <- R6::R6Class(
     },
 
 
-    spawn = function(...){
-      Logger$new(..., parent = self)
+    spawn = function(name, ...){
+      get_logger(paste0(self$name, "/", name))
     }
   ),
 
@@ -524,25 +565,46 @@ Logger <- R6::R6Class(
     last_event = function() private$.last_event,
 
     ancestry = function(){
-      structure(
-        c(setNames(self$propagate, self$name), private$.parent$ancestry),
-        class = c("ancestry", "list")
+
+      nm <- unlist(strsplit(self$name, "/"))
+
+      res <- vapply(
+        seq_along(nm),
+        function(i) get_logger(nm[1:i])[["propagate"]],
+        logical(1)
       )
+
+      structure(
+        setNames(res, nm),
+        class = c("ancestry", class(res))
+      )
+
     },
 
-    full_name = function(){
-      paste(rev(setdiff(names(self$ancestry), "root")), collapse = ".")
+    parent = function() {
+      if (self$name == "root"){
+        return(NULL)
+      } else {
+        get_logger(names(self$ancestry[-length(self$ancestry)]))
+      }
     },
 
-    parent = function() private$.parent,
+    threshold = function() {
 
-    threshold = function() private$.threshold,
+      res <- get(".threshold", envir = private)
+
+      if (is.null(res)){
+        get("parent", envir = self)[["threshold"]]
+      } else {
+        res
+      }
+    },
 
     inherited_appenders = function(){
       if (self$propagate){
         c(
-          private$.parent$appenders,
-          private$.parent$inherited_appenders
+          get("parent", envir = self)$appenders,
+          get("parent", envir = self)$inherited_appenders
         )
       } else {
         NULL
@@ -559,13 +621,24 @@ Logger <- R6::R6Class(
   # private -----------------------------------------------------------------
   private = list(
 
+    finalize = function(){
+      # ensure appenders are destroyed before logger is destroyed so that the
+      # finalize method of the appenders can still access the logger if it
+      # wants to
+      for (i in rev(seq_along(self$appenders))){
+        self$remove_appender(i)
+      }
+
+      gc()  # ensure that finalizers of appenders are executed now
+      invisible()
+    },
+
     # +- fields ---------------------------------------------------------------
     .propagate = NULL,
     .exception_handler = NULL,
     .name = NULL,
-    .parent = NULL,
     .appenders = NULL,
-    .threshold = NA_integer_,
+    .threshold = NULL,
     .last_event = NULL
   )
 )
@@ -584,7 +657,7 @@ LoggerGlue <- R6::R6Class(
   public = list(
 
     fatal = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get(".threshold", envir = private) < 100L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 100L)) return(NULL)
 
       force(.envir)
       get("log", envir = self)(
@@ -597,7 +670,7 @@ LoggerGlue <- R6::R6Class(
     },
 
     error = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get(".threshold", envir = private) < 200L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 200L)) return(NULL)
 
       get("log", envir = self)(
         ...,
@@ -609,7 +682,7 @@ LoggerGlue <- R6::R6Class(
     },
 
     warn = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get(".threshold", envir = private) < 300L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 300L)) return(NULL)
 
       get("log", envir = self)(
         ...,
@@ -621,7 +694,7 @@ LoggerGlue <- R6::R6Class(
     },
 
     info = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get(".threshold", envir = private) < 400L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 400L)) return(NULL)
 
       get("log", envir = self)(
         ...,
@@ -633,7 +706,7 @@ LoggerGlue <- R6::R6Class(
     },
 
     debug = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get(".threshold", envir = private) < 500L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 500L)) return(NULL)
 
       force(.envir)
       get("log", envir = self)(
@@ -646,7 +719,7 @@ LoggerGlue <- R6::R6Class(
     },
 
     trace = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get(".threshold", envir = private) < 600L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 600L)) return(NULL)
 
       force(.envir)
       get("log", envir = self)(
@@ -665,7 +738,7 @@ LoggerGlue <- R6::R6Class(
       caller = get_caller(-7),
       .envir = parent.frame()
     ){
-      if (identical(get(".threshold", envir = private), 0L)) return(NULL)
+      if (identical(get("threshold", envir = self), 0L)) return(NULL)
 
       force(.envir)
       tryCatch({
@@ -678,7 +751,7 @@ LoggerGlue <- R6::R6Class(
 
         # Check if LogEvent should be created
         if (
-          identical(level[[1]] > get(".threshold", envir = private), TRUE) ||
+          identical(level[[1]] > get("threshold", envir = self), TRUE) ||
           identical(getOption("lgr.logging_suspended"), TRUE)
         ){
           return(invisible(msg))
@@ -739,3 +812,37 @@ LoggerGlue <- R6::R6Class(
   )
 )
 
+
+
+
+# LoggerRoot --------------------------------------------------------------
+
+#' Special logger subclass for the root logger. Currently exactly like a
+#' normal Logger, but prevents the threshold to be set to NULL
+LoggerRoot <-
+  R6::R6Class(
+    "LoggerRoot",
+    inherit = Logger,
+    cloneable = FALSE,
+    public <- list(
+      set_threshold = function(level){
+        if (is.null(level)){
+          warning("Cannot set `threshold` to `NULL` for the root Logger")
+          level <- NA_integer_
+        }
+
+        level <- standardize_threshold(level)
+        private[[".threshold"]] <- level
+        invisible(self)
+      }
+    )
+  )
+
+
+
+
+# utils -------------------------------------------------------------------
+
+is_Logger <- function(x){
+  inherits(x, "Logger")
+}

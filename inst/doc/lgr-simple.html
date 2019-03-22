@@ -97,17 +97,17 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <h3>Simplified Logging Syntax</h3>
 <p>If you care about terse syntax you can use the following <code>UPPERCASE</code><a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a> commands to log:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">FATAL</span>(<span class="st">&quot;This is an important message about %s going wrong&quot;</span>, <span class="st">&quot;something&quot;</span>)
-<span class="co">#&gt; FATAL [11:47:55.234] This is an important message about something going wrong</span>
+<span class="co">#&gt; FATAL [08:48:42.530] This is an important message about something going wrong</span>
 <span class="kw">ERROR</span>(<span class="st">&quot;A less severe error&quot;</span>)
-<span class="co">#&gt; ERROR [11:47:55.262] A less severe error</span>
+<span class="co">#&gt; ERROR [08:48:42.557] A less severe error</span>
 <span class="kw">WARN</span>(<span class="st">&quot;something likely went wrong&quot;</span>)
-<span class="co">#&gt; WARN  [11:47:55.301] something likely went wrong</span>
+<span class="co">#&gt; WARN  [08:48:42.592] something likely went wrong</span>
 <span class="kw">INFO</span>(<span class="st">&quot;Everything is ok&quot;</span>)
-<span class="co">#&gt; INFO  [11:47:55.303] Everything is ok</span>
+<span class="co">#&gt; INFO  [08:48:42.594] Everything is ok</span>
 <span class="kw">DEBUG</span>(<span class="st">&quot;Debug messages are hidden by default&quot;</span>)
 <span class="kw">console_threshold</span>(<span class="st">&quot;debug&quot;</span>)  <span class="co"># you must use lower case names here</span>
 <span class="kw">DEBUG</span>(<span class="st">&quot;unless we lower the threshold&quot;</span>)
-<span class="co">#&gt; DEBUG [11:47:55.307] unless we lower the threshold</span>
+<span class="co">#&gt; DEBUG [08:48:42.598] unless we lower the threshold</span>
 <span class="kw">TRACE</span>(<span class="st">&quot;Trace is even lower than debug&quot;</span>)</code></pre></div>
 <p>If you have the package <strong>data.table</strong> installed, lgr does not only log to the console, but also to an in memory <code>data.table</code>. You can use <code>show_log()</code> to quickly display this in memory log<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a>.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">show_log</span>(<span class="dv">3</span>)  <span class="co"># show the last 3 log entries</span></code></pre></div>

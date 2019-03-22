@@ -1,7 +1,7 @@
 Type: Package
 Package: lgr
 Title: A Fully Featured Logging Framework
-Version: 0.1.1
+Version: 0.2.0
 Authors@R: 
     person(given = "Stefan",
            family = "Fleck",
@@ -18,23 +18,23 @@ Description: A flexible, feature-rich yet light-weight logging
 License: MIT + file LICENSE
 URL: https://github.com/s-fleck/lgr
 BugReports: https://github.com/s-fleck/lgr/issues
-Imports: R6
+Imports: R6 (>= 2.4.0)
 Suggests: covr, crayon, data.table, DBI, desc, future, future.apply,
-        glue, gmailr, jsonlite, knitr, RMariaDB, rmarkdown, RMySQL,
-        RPostgres, RPostgreSQL, RPushbullet, RSQLite (>= 2.0),
-        sendmailR, testthat, tibble, tools, utils, whoami
+        glue, gmailr, jsonlite, knitr, rmarkdown, sendmailR, RSQLite,
+        RMariaDB, RPostgres, RMySQL, RPostgreSQL, rprojroot, testthat,
+        tibble, tools, utils, whoami, yaml
 VignetteBuilder: knitr
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.1.1
 Collate: 'Filterable.R' 'utils-sfmisc.R' 'utils.R' 'Appender.R'
         'Filter.R' 'log_levels.R' 'print_LogEvent.R' 'Layout.R'
-        'LogEvent.R' 'Logger.R' 'default_functions.R' 'lgr-package.R'
-        'print_Logger.R' 'read_json_log.R' 'simple_logging.R'
-        'use_logger.R' 'utils-formatting.R' 'utils-logging.R'
-        'utils-rd.R'
+        'LogEvent.R' 'Logger.R' 'default_functions.R' 'get_logger.R'
+        'lgr-package.R' 'logger_config.R' 'print_Logger.R'
+        'read_json_log.R' 'simple_logging.R' 'test.R' 'use_logger.R'
+        'utils-formatting.R' 'utils-logging.R' 'utils-rd.R'
 NeedsCompilation: no
-Packaged: 2019-02-13 10:47:57 UTC; fleck
+Packaged: 2019-03-22 07:48:44 UTC; hoelk
 Author: Stefan Fleck [aut, cre] (<https://orcid.org/0000-0003-3344-9851>)
 Repository: CRAN
-Date/Publication: 2019-02-22 13:50:07 UTC
+Date/Publication: 2019-03-22 08:10:03 UTC

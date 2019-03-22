@@ -69,18 +69,21 @@ test_that("AppenderFile works as expected", {
 
 # AppenderJson ------------------------------------------------------------
 
-test_that("AppenderJson works as expected", {
+test_that("AppenderJson show method works as expected", {
   tf <- tempfile()
 
   # with default format
   app <- AppenderJson$new(file = tf)
 
-  for (i in 1:10) app$append(x)
-  r <- capture_output(app$show(n = 3))
-  expect_true(grepl( "(level.*)[3]", r))
-  expect_false(grepl("(level.*)[4]", r))
+  for (i in 1:10)
+    app$append(x)
 
-  r <- capture_output(app$show(threshold = 100))
+  # show shows the correct number of lines
+  r <- utils::capture.output(app$show(n = 3))
+  expect_true(grepl( "(level.*){3}", paste(r, collapse = "\n")))
+  expect_false(grepl("(level.*){4}", paste(r, collapse = "\n")))
+
+  r <- utils::capture.output(app$show(threshold = 100))
   expect_identical(r, "")
 })
 
@@ -283,8 +286,7 @@ test_that("AppenderDt: default format for show_log looks like format.LogEvent", 
         appenders = list(file = AppenderFile$new(file = tf)),
         buffer_size = 10
       )
-    ),
-    parent = NULL
+    ), propagate = FALSE
   )
 
 
@@ -374,7 +376,7 @@ test_that("AppenderBuffer: flush on object destruction can be switched of", {
         buffer_size = 10
       )
     ),
-    parent = NULL
+    propagate = FALSE
   )
 
   l$info(LETTERS[1:3])

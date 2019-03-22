@@ -15,44 +15,47 @@ Loggers is only necessary if you want to take advantage of hierarchical
 logging as outlined in \code{vignette("lgr", package = "lgr")}.
 }
 \section{Usage}{
-\preformatted{
-x <- x$new(name = "(unnamed logger)", appenders = list(), threshold = 400L,
-  filters = list(), parent = lgr::lgr, exception_handler =
-  default_exception_handler, propagate = TRUE)
+\preformatted{# Cannonical way to initialize a new Logger (see "Creating Loggers")
+lg <- get_logger("logger")
+}
 
-x$log(level, msg, ..., timestamp = Sys.time(), caller = get_caller(-7))
-x$fatal(msg, ..., caller = get_caller(-8L))
-x$error(msg, ..., caller = get_caller(-8L))
-x$warn(msg, ..., caller = get_caller(-8L))
-x$info(msg, ..., caller = get_caller(-8L))
-x$debug(msg, ..., caller = get_caller(-8L))
-x$trace(msg, ..., caller = get_caller(-8L))
-x$add_appender(appender, name = NULL)
-x$remove_appender(pos)
-x$handle_exception(...)
-x$set_name(x)
-x$set_exception_handler(fun)
-x$set_propagate(x)
-x$set_parent(logger)
-x$set_threshold(level)
-x$set_appenders(x)
-x$spawn(...)
-x$filter(event)
-x$add_filter(filter, name = NULL)
-x$remove_filter(pos)
-x$set_filters(filters)
+\preformatted{# R6 constructor (not recommended for productive use)
+lg <- Logger$new(name = "(unnamed logger)", appenders = list(), threshold =
+  NULL, filters = list(), exception_handler = default_exception_handler,
+  propagate = TRUE)
 
-x$ancestry
-x$appenders
-x$exception_handler
-x$full_name
-x$inherited_appenders
-x$last_event
-x$name
-x$parent
-x$propagate
-x$threshold
-x$filters
+lg$log(level, msg, ..., timestamp = Sys.time(), caller = get_caller(-7))
+lg$fatal(msg, ..., caller = get_caller(-8L))
+lg$error(msg, ..., caller = get_caller(-8L))
+lg$warn(msg, ..., caller = get_caller(-8L))
+lg$info(msg, ..., caller = get_caller(-8L))
+lg$debug(msg, ..., caller = get_caller(-8L))
+lg$trace(msg, ..., caller = get_caller(-8L))
+lg$config(cfg = NULL, file = NULL, text = NULL)
+lg$add_appender(appender, name = NULL)
+lg$remove_appender(pos)
+lg$handle_exception(...)
+lg$set_name(x)
+lg$set_exception_handler(fun)
+lg$set_propagate(x)
+lg$set_threshold(level)
+lg$set_appenders(x)
+lg$spawn(name, ...)
+lg$filter(event)
+lg$add_filter(filter, name = NULL)
+lg$remove_filter(pos)
+lg$set_filters(filters)
+
+lg$ancestry
+lg$appenders
+lg$exception_handler
+lg$inherited_appenders
+lg$last_event
+lg$name
+lg$parent
+lg$propagate
+lg$threshold
+lg$filters
 
 }
 }
@@ -65,6 +68,19 @@ package, but you do not need to configure it. Usually only the root logger
 needs to be configured (new Appenders added/removed, Layouts modified,
 etc...).
 
+Loggers should never be instantiated directly with \code{Logger$new()} but rather
+via \code{get_logger("name")}. If \code{"name"} does not exist, a new
+Logger with that name will be created, otherwise the function returns a
+Reference to the existing Logger.
+
+The \code{name} is potentially a \code{/} separated hierarchical value like
+\code{foo/bar/baz}. Loggers further down the hierarchy are children of the loggers
+above.
+
+All calls to \code{get_logger()} with the same name return the same Logger
+instance. This means that Logger instances never need to be passed between
+different parts of an application.
+
 If you just want to log to an additional output (like a log file), you want
 a new \link{Appender}, not a new Logger.
 }
@@ -72,9 +88,9 @@ a new \link{Appender}, not a new Logger.
 \section{Fields}{
 
 
-You can either specify these fields in \code{Logger$new()} or modify them after
-creation with setter functions of the form \code{logger$set_<fieldname>(value)}
-(see examples)
+You can modify the fields of an existing Logger with
+\code{logger$set_<fieldname>(value)} (see examples). Another way to configure
+loggers is via its \code{$config()} method.
 
 \describe{
 \item{\code{name}, \code{set_name(x)}}{\code{character} scalar. A name for the Logger that should be
@@ -93,10 +109,6 @@ inheritance structures).}
 
 \item{\code{threshold}, \code{set_threshold(level)}}{\code{character} or \code{integer} scalar.
 The minimum \link[=log_levels]{log level} that triggers this Logger}
-
-\item{\code{parent}, \code{set_parent(logger)}}{a \code{Logger}. Usually the root logger.
-Can also be \code{NULL}, but all Loggers must be descendants of the root logger
-for lgr to work as intended.}
 
 \item{\code{exception_handler}, \code{set_exception_handler()}}{a \code{function} that
 takes a single argument \code{e}. The function used to handle errors that occur
@@ -130,15 +142,12 @@ Loggers also have the following additional read-only bindings:
 \describe{
 \item{\code{ancestry}}{A named \code{logical} vector of containing
 the propagate value of each Logger upper the inheritance tree. The names
-are the names of the appenders.}
+are the names of the appenders. \code{ancestry} is an S3 class with a custom
+\code{format()}/\code{print()} method, so if you want to use the plain logical
+vector use \code{unclass(lg$ancestry)}}
 
 \item{\code{inherited_appenders}}{A \code{list} of all inherited
 appenders from ancestral Loggers of the current Logger}
-
-\item{\code{full_name}}{\code{character} scalar. The full or \emph{qualified} name of
-the logger: The name of the logger and all loggers it inherits from
-(except for the root logger)
-}
 
 \item{\code{last_event}}{The last LogEvent produced by the current Logger}
 }
@@ -183,6 +192,14 @@ to the relevant \link{Appenders} and checked against their thresholds and
 filters.
 }
 
+\item{\code{config(cfg  = NULL, file = NULL, text = NULL}}{Load a Logger
+configuration. \code{cfg} can be either a special list object, the path to
+a YAML config file, or a character scalar containing YAML. The arguments
+\code{file} and \code{text} can used alternatively and enforce that the supplied
+argument is of the specified type.
+See \link{logger_config} for details.
+}
+
 \item{\code{add_appender(appender, name = NULL)}, \code{remove_appender(pos)}}{
 Add or remove an \link{Appender}. Supplying a \code{name} is optional but
 recommended. After adding an Appender with
@@ -191,8 +208,10 @@ refer to it via \code{logger$appenders$console}. \code{remove_appender()} can
 remove an Appender by position or name.
 }
 
-\item{\code{spawn(...)}}{Spawn a child Logger. \code{lg <- lgr$spawn("mylogger")} is
-equivalent to \code{lg <- Logger$new("mylogger", parent = lgr)}}
+\item{\code{spawn(...)}}{Spawn a child Logger.
+\code{get_logger("foo/bar")$spawn("baz")} is equivalent to
+\code{get_logger("foo/bar/baz")}, but can be convenient for programmatic use
+when the name of the parent Logger is not known.}
 }
 
 
@@ -241,10 +260,10 @@ lg$fatal("blubb")
 readLines(tf)
 
 # This logger's print() method depicts this relationship
-lg2 <- Logger$new("child", parent = lg)
+lg2 <- Logger$new("lg/child")
 print(lg2)
 print(lg2$ancestry)
-print(lg2$full_name)
+print(lg2$name)
 
 # use formatting strings and custom fields
 tf2 <- tempfile()

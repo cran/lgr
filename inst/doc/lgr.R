@@ -39,6 +39,31 @@ cat(readLines(tf))
 ## ------------------------------------------------------------------------
 read_json_lines(tf)
 
+## ----eval = FALSE--------------------------------------------------------
+#  
+#  # explicit setup with logger_config
+#  lgr$config(logger_config(
+#    threshold = "info",
+#    appenders = AppenderFile$new(
+#      file = "path/to/logfile",
+#      layout = LayoutFormat(fmt = "[%L] %m")
+#    )
+#  ))
+
+## ------------------------------------------------------------------------
+#### contents of path/to/config.yaml #####
+# Logger:
+#   name: test/blubb
+#   threshold: info
+#   appenders:
+#     AppenderFile:
+#       file: /path/to/logfile
+#       LayoutFormat: 
+#          fmt: '[%L] %m'
+
+## ----eval = FALSE--------------------------------------------------------
+#  lgr$config("path/to/config.yaml")
+
 ## ------------------------------------------------------------------------
 # The default console appender displays custom fields as pseudo-json after the message
 lgr$info("Styria has", poultry = c("capons", "turkeys"))
@@ -136,9 +161,9 @@ unlink(tf)
 ## ------------------------------------------------------------------------
 # install.packages("glue")
 
-l <- LoggerGlue$new("glue_logger")
+lg <- get_logger_glue("glue/logger")
 
-l$info(
+lg$info(
   "glue automatically ", 
   "pastes together unnamed arguments ",
   "and evaluates arbitray expressions inside braces {Sys.Date()}"
@@ -146,17 +171,16 @@ l$info(
 
 
 ## ------------------------------------------------------------------------
-l$info("For more info on glue see {website}", website = "https://glue.tidyverse.org/")
+lg$info("For more info on glue see {website}", website = "https://glue.tidyverse.org/")
 
 ## ------------------------------------------------------------------------
-l$info("Glue is available from {.cran}", .cran = "https://CRAN.R-project.org/package=glue")
+lg$info("Glue is available from {.cran}", .cran = "https://CRAN.R-project.org/package=glue")
 
 ## ------------------------------------------------------------------------
-lg <- Logger$new(
-  "test", 
-  appenders = list(cons = AppenderConsole$new()), 
-  propagate = FALSE
-)
+lg <- get_logger("test")
+lg$set_appenders(list(cons = AppenderConsole$new()))
+lg$set_propagate(FALSE)
+
 
 lg$info("the default format")
 lg$appenders$cons$layout$set_fmt("%L (%n) [%t] %c(): !! %m !!")
@@ -174,11 +198,10 @@ lg$info("with glue")
 # install.packages("jsonlite")
 tf <- tempfile()
 
-lg <- Logger$new(
-  "test logger",
-  appenders = list(json = AppenderJson$new(file = tf)), 
-  propagate = FALSE
-)
+lg <- get_logger("test")
+
+lg$set_appenders(list(json = AppenderJson$new(file = tf)))
+lg$set_propagate(FALSE)
 
 lg$info("JSON naturally ", field = "custom")
 lg$info("supports custom", numbers = 1:3)
@@ -207,7 +230,8 @@ unlink(tf)
 ## ------------------------------------------------------------------------
 # The logger name should be the same as the package name
 tf <- tempfile()
-lg <- Logger$new("mypackage", appenders = AppenderFile$new(tf))  
+lg <- get_logger("mypackage")
+lg$add_appender(AppenderFile$new(tf))  
 
 ## ------------------------------------------------------------------------
 print(lg)
@@ -228,8 +252,9 @@ lg$info("Nothing to see here")
 unlink(tf)
 
 ## ------------------------------------------------------------------------
-lg <- Logger$new(
-  "buffer example",
+lg <- get_logger("buffer")
+
+lg$config(logger_config(
   threshold = NA,
   propagate = FALSE,  # to suppress console output
   appenders = AppenderBuffer$new(
@@ -240,21 +265,22 @@ lg <- Logger$new(
     should_flush = function(event) event$level <= 200,
     appenders = AppenderConsole$new(threshold = NA)
   )
-)
+))
 
 for (nm in month.name[1:8]) lg$debug("%s", nm)
 lg$error("But the days grow short when you reach September")
 
 ## ------------------------------------------------------------------------
 # install.packages("RSQLite")
-lg <- Logger$new(
-  "db_logger",
-  appenders = list(db = AppenderDbi$new(
+lg <- get_logger("db_logger")
+lg$set_propagate(FALSE)
+lg$add_appender(
+  name = "db", 
+  AppenderDbi$new(
     conn = DBI::dbConnect(RSQLite::SQLite()),
     table = "log",
     buffer_size = 2L
-  )), 
-  propagate = FALSE
+  )
 )
 
 lg$info("Logging to databases uses a buffer")
@@ -310,7 +336,7 @@ without_logging({
 .onLoad <- function(...){
   assign(
     "lg",  # the recommended name for a logger object
-    lgr::Logger$new(name = "mypackage"),  # should be the same as the package name
+    lgr::get_logger(name = "mypackage"),  # should be the same as the package name
     envir = parent.env(environment())
   )
 }

@@ -41,8 +41,15 @@ format.Logger = function(
   assert(is_scalar_bool(color))
   if (!color) style_subtle <- identity
 
+  thr <- fmt_threshold(x$threshold, type = "character")
+
+  if (is.null(x[[".__enclos_env__"]][["private"]][[".threshold"]])){
+    thr <- style_subtle(thr)
+  }
+
+
   header <- paste(
-    paste0("<", class(x)[[1]], "> [", fmt_threshold(x$threshold, type = "character"), "]"),
+    paste0("<", class(x)[[1]], "> [", thr, "]"),
     format(x$ancestry, color = color)
   )
 
@@ -137,13 +144,12 @@ srs_appender <- function(x){
 #'
 #' @examples
 #' # print only the ancestry of a logger
-#' l1 <- Logger$new("AegonV")
-#' l2 <- Logger$new("Aerys", parent = l1)
-#' l3 <- Logger$new("Rheagar", parent = l2, propagate = FALSE)
-#' l4 <- Logger$new("Aegon", parent = l3)
+#' lg <- get_logger("AegonV/Aerys/Rheagar/Aegon")
 #'
-#' print(l4$ancestry)
-#' unclass(l4$ancestry)
+#' get_logger("AegonV/Aerys/Rheagar")$set_propagate(FALSE)
+#'
+#' print(lg$ancestry)
+#' unclass(lg$ancestry)
 print.ancestry <- function(
   x,
   color = requireNamespace("crayon", quietly = TRUE),
@@ -165,20 +171,22 @@ format.ancestry <- function(
   ...
 ){
   assert(is_scalar_bool(color))
-  seps <- rep("||", length(x))
-  seps <- ifelse(x, " -> ", " | ")
-  seps[length(seps)] <- ""
-  l_names <- names(x)
+  sps <- rep("/", length(x))
+  nms <- names(x)
+
+  style <- identity
 
   if (color){
-    l_names <- style_subtle(names(x))
-    seps  <- style_subtle(seps)
-    for (i in seq_along(x)){
-      seps[[i]]  <- crayon::strip_style(seps[[i]])
-      l_names[[i]] <- crayon::strip_style(l_names[[i]])
-      if (!x[[i]]) break
+    for (i in rev(seq_along(x))){
+      nms[[i]] <- style(nms[[i]])
+      sps[[i]] <- style(sps[[i]])
+      if (!x[[i]]){
+        style <- style_subtle
+      }
     }
   }
 
-  paste0(l_names, seps, collapse = "")
+  sps[length(sps)] <- ""
+
+  paste0(nms, sps, collapse = "")
 }

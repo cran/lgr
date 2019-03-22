@@ -1,6 +1,6 @@
 #' A Fully Featured Logging Framework for R
 #'
-#' For details please refer to `vignette("lgr", package = "lgr")`
+#' For details please refer to `vignette("lgr", package = "lgr")`.
 #'
 #' @section Options:
 #'
@@ -108,15 +108,11 @@ NULL
     appenders[["memory"]] <- AppenderDt$new(layout = appenders$console$layout)
   }
 
-
   assign(
-    "lgr",
-    Logger$new(
-      name = "root", # usally a logger should have the same name as the package it belongs to
-      appenders = appenders,
-      threshold = NA,
-      parent = NULL  # _never_ set the parent to null yourself, root should be the only root logger
-    ),
-    envir = parent.env(environment())
+    "root",
+    LoggerRoot$new("root", appenders = appenders, threshold = NA),
+    envir = loggers
   )
+
+  assign("lgr", get_logger("root"), envir = parent.env(environment()))
 }
