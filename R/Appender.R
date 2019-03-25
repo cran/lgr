@@ -225,6 +225,11 @@ AppenderConsole <- R6::R6Class(
 #' readLines(default)
 #' readLines(fancy)
 #' readLines(json)
+#'
+#' # cleanup
+#' unlink(default)
+#' unlink(fancy)
+#' unlink(json)
 NULL
 
 
@@ -320,6 +325,8 @@ AppenderFile <- R6::R6Class(
 #' l$appenders[[1]]$show()
 #' l$appenders[[1]]$data
 #'
+#' # cleanup
+#' unlink(tf)
 NULL
 
 
@@ -1183,6 +1190,13 @@ AppenderBuffer <- R6::R6Class(
   private = list(
     finalize = function(){
       if (self$flush_on_exit) self$flush()
+      # Ensure child appenders are gc'ed first. This ensures more predictable
+      # behaviour when destroying an AppenderBuffer.
+      for (i in rev(seq_along(self$appenders))){
+        self$remove_appender(i)
+        gc()
+      }
+      invisible()
     },
 
     .appenders = list()

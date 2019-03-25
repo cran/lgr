@@ -1,4 +1,10 @@
-# lgr 0.2.0
+# lgr 0.2.1 (2019-03-25)
+
+* Emergency fix that ensures test suite cleanes up temporary files 
+* Removed .rd file for the unexporter LoggerRoot class
+
+
+# lgr 0.2.0 (2019-03-22)
 
 * `get_loggers()` registers new loggers in the lgr::loggers namespace, this 
   is a more global and decoupled approach similar to how python logging handles 
@@ -9,7 +15,7 @@
 * Logger inheritance is now derived from the qualified name of a logger. 
   Consequently `lg$parent` is now derived from `lg$name`, `lg$set_parent()` 
   is no longer possible.
-* If no threshold is set of r a new Logger, it now inherits the threshold
+* If no threshold is set for a new Logger, it now inherits the threshold
   of its parent
 * Depend on R6 >= 2.4.0 which includes relevant fixes to finalizers. finalize 
   methods are now private.
@@ -20,7 +26,7 @@
   for specific unit tests.
 
 
-# lgr 0.1.1
+# lgr 0.1.1 (2019-01-30)
 
 * Added `show_data()` and `show_dt()` for quick access to the root loggers
   in memory log as `data.frame` or `data.table` respectively

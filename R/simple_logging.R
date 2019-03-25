@@ -18,7 +18,8 @@ NULL
 
 #' Basic Setup for the Logging System
 #'
-#' Quick and easy way to configure the root logger for logging to a file
+#' Quick and easy way to configure the root logger for logging to a file.
+#' **experimental**, paramters will likely change in the next lgr version.
 #'
 #' @param file `character` scalar: If not `NULL` a [AppenderFile] will be created
 #'   that logs to this file. If the filename ends in `.jsonl` an [AppenderJson]
@@ -33,8 +34,10 @@ NULL
 #' @param threshold `character` or `integer` scalar.
 #'   The minimum [log level][log_levels] that should be processed by the root
 #'   logger.
+#' @param memory `logical` scalar. add a memory appender
+#' @param console `logical` scalar. add a console appender
 #'
-#' @return `NULL` (invisibly)
+#' @return the `root` Logger (lgr)
 #' @export
 #'
 #' @examples
@@ -46,40 +49,75 @@ basic_config <- function(
   file = NULL,
   fmt = NULL,
   timestamp_fmt = "%Y-%m-%d %H:%M:%OS3",
-  threshold = NA,
+  threshold = "info",
+  console = TRUE,
+  memory = TRUE,
   appenders = NULL
 ){
+  warning("This function is still experimental and paramters might change in the near future", call. = FALSE)
+
+  l <- get_logger("root")
+  l$config(logger_config(threshold = NA_integer_))  # reset root logger config
+
+
+  # threshold
   assert(!is.null(threshold))
+  l$set_threshold(threshold)
 
 
   if (!is.null(file)){
     assert(is.null(appenders), "`appenders` must be NULL if `file` is specified")
-
     pos <- regexpr("\\.([[:alnum:]]+)$", file)
     ext <- ifelse(pos > -1L, substring(file, pos + 1L), "")
 
     if (identical(tolower(ext), "jsonl")){
       assert (is.null(fmt), "`fmt` must be null if `file` is a '.jsonl' file")
-      appenders <- list(file = AppenderJson$new())
-    } else {
-      if (is.null(fmt))
-        fmt <- "%L [%t] %m"
+      l$add_appender(
+        name = "file",
+        AppenderJson$new(threshold = NA)
+      )
 
-      appenders <- list(file = AppenderFile$new(
-        file = file,
-        layout = LayoutFormat$new(
-          fmt = fmt,
-          timestamp_fmt = timestamp_fmt
+    } else {
+      if (is.null(fmt))  fmt <- "%L [%t] %m"
+
+      l$add_appender(
+        name = "file",
+        AppenderFile$new(
+          file = file,
+          threshold = NA,
+          layout = LayoutFormat$new(
+            fmt = fmt,
+            timestamp_fmt = timestamp_fmt
+          )
         )
-      ))
+      )
     }
   }
 
-  l <- get_logger("root")
-  l$set_appenders(appenders)
-  l$set_threshold(threshold)
+  if (console){
+    if (is.null(fmt))  fmt <- "%L [%t] %m"
+    l$add_appender(
+      name = "console",
+      AppenderConsole$new(
+        threshold = NA,
+        layout = LayoutFormat$new(
+          colors = getOption("lgr.colors"),
+          fmt = fmt,
+          timestamp_fmt = timestamp_fmt
+        )
+      )
+    )
+  }
 
-  invisible(NULL)
+  if (memory){
+    l$add_appender(name = "memory", AppenderBuffer$new(
+      threshold = NA,
+      should_flush = function(event) FALSE
+    ))
+  }
+
+
+  lgr
 }
 
 

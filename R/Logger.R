@@ -204,6 +204,10 @@
 #' cat(readLines(tf), sep = "\n")
 #' cat(readLines(tf2), sep = "\n")
 #'
+#' # cleanup
+#' unlink(tf)
+#' unlink(tf2)
+#'
 #' # The following works because if no unnamed `...` are present, msg is not
 #' # passed through sprintf() (otherwise you would have to escape the "%")
 #' lg$fatal("100%")
@@ -627,9 +631,9 @@ Logger <- R6::R6Class(
       # wants to
       for (i in rev(seq_along(self$appenders))){
         self$remove_appender(i)
+        gc()
       }
 
-      gc()  # ensure that finalizers of appenders are executed now
       invisible()
     },
 
@@ -818,25 +822,24 @@ LoggerGlue <- R6::R6Class(
 # LoggerRoot --------------------------------------------------------------
 
 #' Special logger subclass for the root logger. Currently exactly like a
-#' normal Logger, but prevents the threshold to be set to NULL
-LoggerRoot <-
-  R6::R6Class(
-    "LoggerRoot",
-    inherit = Logger,
-    cloneable = FALSE,
-    public <- list(
-      set_threshold = function(level){
-        if (is.null(level)){
-          warning("Cannot set `threshold` to `NULL` for the root Logger")
-          level <- NA_integer_
-        }
-
-        level <- standardize_threshold(level)
-        private[[".threshold"]] <- level
-        invisible(self)
+#' normal Logger, but prevents the threshold to be set to `NULL`
+#' @noRd
+LoggerRoot <- R6::R6Class(
+  "LoggerRoot",
+  inherit = Logger,
+  cloneable = FALSE,
+  public <- list(
+    set_threshold = function(level){
+      if (is.null(level)){
+        warning("Cannot set `threshold` to `NULL` for the root Logger")
+        level <- NA_integer_
       }
-    )
+      level <- standardize_threshold(level)
+      private[[".threshold"]] <- level
+      invisible(self)
+    }
   )
+)
 
 
 

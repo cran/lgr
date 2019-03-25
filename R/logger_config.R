@@ -33,9 +33,10 @@
 #'   propagate: false
 #'   appenders:
 #'     AppenderFile:
-#'       file: /tmp/blah.txt
+#'       file: /tmp/testlog.txt
 #' "
 #' lg$config(cfg)  # calls as_logger_config() internally
+#' lg$config(logger_config())  # reset logger config to default state
 logger_config <- function(
   appenders = list(),
   threshold = NULL,
@@ -158,6 +159,7 @@ resolve_r6_ctors <- function(x){
     if (length(ctors) && !is.null(ctors[[i]])){
 
       args <- resolve_r6_ctors(x[[i]])
+      if (is.null(args)) args <- list()
 
       # Allow user to supply the layout directly without having to specify
       # the layout: key manually for Appenders
@@ -173,7 +175,8 @@ resolve_r6_ctors <- function(x){
         }
       }
 
-      x[[i]] <- do.call(ctors[[i]]$new, args)
+      # prevent logger not named warning
+      suppressWarnings(x[[i]] <- do.call(ctors[[i]]$new, args))
     } else {
       if (is.recursive(x[[i]])){
         x[[i]] <- resolve_r6_ctors(x[[i]])
