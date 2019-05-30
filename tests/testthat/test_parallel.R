@@ -22,10 +22,10 @@ for (strategy in c(
     on.exit(unlink(tf))
 
     lr <- get_logger("par_root")
-    lr$config(logger_config(
-      propagate = FALSE,
-      appenders = AppenderFile$new(tf)
-    ))
+    lr$
+      set_appenders(AppenderFile$new(tf))$
+      set_propagate(FALSE)
+
 
     lg <- get_logger("par_root/par_child")
 

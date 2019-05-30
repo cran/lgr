@@ -211,7 +211,10 @@ LayoutFormat <- R6::R6Class(
 #' @seealso lgr exports a number of formatting utility functions that are
 #'   useful for layout glue: [colorize_levels()], [pad_left()], [pad_right()].
 #' @examples
-#' lg <- Logger$new("testlogger", appenders = AppenderConsole$new(), propagate = FALSE)
+#' lg <- get_logger("test")$
+#'   set_appenders(AppenderConsole$new())$
+#'   set_propagate(FALSE)
+#'
 #' lg$appenders[[1]]$set_layout(LayoutGlue$new())
 #' lg$fatal("test")
 #'
@@ -221,7 +224,7 @@ LayoutFormat <- R6::R6Class(
 #'   "{logger$name} {level_name}({level}) {caller}: {toupper(msg)} {{custom: {custom}}}"
 #' )
 #' lg$fatal("test", custom = "foobar")
-#'
+#' lg$config(NULL)  # reset logger config
 #'
 NULL
 
@@ -350,7 +353,7 @@ LayoutGlue <- R6::R6Class(
 #'
 #'
 #' @name LayoutDbi
-#' @aliases LayoutSqlite LayoutRjdbc LayoutDb2 LayoutMySql LayoutPostgres
+#' @aliases LayoutSqlite LayoutRjdbc LayoutRjdbcDb2 LayoutDb2 LayoutMySql LayoutPostgres
 #' @family Layouts
 #' @family database layouts
 #' @include Filterable.R
@@ -372,18 +375,29 @@ LayoutDbi <- R6::R6Class(
       fmt = "%L [%t] %m  %f",
       timestamp_fmt = "%Y-%m-%d %H:%M:%S",
       colors = getOption("lgr.colors", list()),
-      pad_levels = "right"
+      pad_levels = "right",
+
+      format_table_name = identity,
+      format_colnames = identity,
+      format_data = identity
     ){
       self$set_col_types(col_types)
       self$set_fmt(fmt)
       self$set_timestamp_fmt(timestamp_fmt)
       self$set_colors(colors)
       self$set_pad_levels(pad_levels)
+
+      self$format_table_name <- format_table_name
+      self$format_colnames   <- format_colnames
+      self$format_data       <- format_data
+
+      self
     },
 
-    format_table_name = identity,
-    format_colnames   = identity,
-    format_data       = identity,
+    format_table_name = NULL,
+    format_colnames   = NULL,
+    format_data       = NULL,
+
 
     set_col_types = function(x){
       if (!is.null(x)){
@@ -393,6 +407,7 @@ LayoutDbi <- R6::R6Class(
       private$.col_types <- x
       invisible(self)
     },
+
 
     sql_create_table = function(table){
       assert(
@@ -408,9 +423,18 @@ LayoutDbi <- R6::R6Class(
   ),
 
   active = list(
-    col_types = function() private$.col_types,
-    col_names = function() names(get(".col_types", envir = private))
+    col_types = function() {
+      r <- get(".col_types", envir = private)
+      names(r) <- self$format_colnames(names(r))
+      r
+    },
+
+
+    col_names = function(){
+      names(self$col_types)
+    }
   ),
+
 
   private = list(
     .col_types = NULL
@@ -427,14 +451,35 @@ LayoutSqlite <- R6::R6Class(
   "LayoutSqlite",
   inherit = LayoutDbi,
   public = list(
-    format_table_name = tolower,
-    format_colnames   = tolower,
-    format_data = function(x){
-      for (nm in names(x)){
-        if (inherits(x[[nm]], "POSIXt"))
-          data.table::set(x, i = NULL, j = nm, value = format(x[[nm]]))
+
+    initialize = function(
+      col_types = NULL,
+      fmt = "%L [%t] %m  %f",
+      timestamp_fmt = "%Y-%m-%d %H:%M:%S",
+      colors = getOption("lgr.colors", list()),
+      pad_levels = "right",
+
+      format_table_name = tolower,
+      format_colnames = tolower,
+      format_data = function(x){
+        for (nm in names(x)){
+          if (inherits(x[[nm]], "POSIXt"))
+            data.table::set(x, i = NULL, j = nm, value = format(x[[nm]]))
+        }
+        x
       }
-      x
+    ){
+      self$set_col_types(col_types)
+      self$set_fmt(fmt)
+      self$set_timestamp_fmt(timestamp_fmt)
+      self$set_colors(colors)
+      self$set_pad_levels(pad_levels)
+
+      self$format_table_name <- format_table_name
+      self$format_colnames   <- format_colnames
+      self$format_data       <- format_data
+
+      self
     }
   )
 )
@@ -449,9 +494,31 @@ LayoutPostgres <- R6::R6Class(
   "LayoutPostgres",
   inherit = LayoutDbi,
   public = list(
-    format_table_name = tolower,
-    format_colnames   = tolower,
-    format_data       = identity
+    initialize = function(
+      col_types = NULL,
+      fmt = "%L [%t] %m  %f",
+      timestamp_fmt = "%Y-%m-%d %H:%M:%S",
+      colors = getOption("lgr.colors", list()),
+      pad_levels = "right",
+
+      format_table_name = function(x){
+        if (is_Id(x)) x else tolower(x)
+      },
+      format_colnames = tolower,
+      format_data = identity
+    ){
+      self$set_col_types(col_types)
+      self$set_fmt(fmt)
+      self$set_timestamp_fmt(timestamp_fmt)
+      self$set_colors(colors)
+      self$set_pad_levels(pad_levels)
+
+      self$format_table_name <- format_table_name
+      self$format_colnames   <- format_colnames
+      self$format_data       <- format_data
+
+      self
+    }
   )
 )
 
@@ -463,11 +530,31 @@ LayoutMySql <- R6::R6Class(
   "LayoutMySql",
   inherit = LayoutDbi,
   public = list(
-    format_table_name = tolower,
-    format_colnames   = tolower,
-    format_data       = function(x){
-      data.table::setnames(x, tolower(names(x)))
-      x
+    initialize = function(
+      col_types = NULL,
+      fmt = "%L [%t] %m  %f",
+      timestamp_fmt = "%Y-%m-%d %H:%M:%S",
+      colors = getOption("lgr.colors", list()),
+      pad_levels = "right",
+
+      format_table_name = as_tname,
+      format_colnames = tolower,
+      format_data       = function(x){
+        data.table::setnames(x, tolower(names(x)))
+        x
+      }
+    ){
+      self$set_col_types(col_types)
+      self$set_fmt(fmt)
+      self$set_timestamp_fmt(timestamp_fmt)
+      self$set_colors(colors)
+      self$set_pad_levels(pad_levels)
+
+      self$format_table_name <- format_table_name
+      self$format_colnames   <- format_colnames
+      self$format_data       <- format_data
+
+      self
     }
   )
 )
@@ -483,11 +570,37 @@ LayoutDb2 <- R6::R6Class(
   "LayoutDb2",
   inherit = LayoutDbi,
   public = list(
-    format_table_name = toupper,
-    format_colnames   = toupper,
-    format_data = function(x){
-      names(x) <- toupper(names(x))
-      x
+    initialize = function(
+      col_types = NULL,
+      fmt = "%L [%t] %m  %f",
+      timestamp_fmt = "%Y-%m-%d %H:%M:%S",
+      colors = getOption("lgr.colors", list()),
+      pad_levels = "right",
+
+      format_table_name = function(x){
+        if (inherits(x, "Id")){
+          x
+        } else {
+          toupper(x)
+        }
+      },
+      format_colnames = toupper,
+      format_data = function(x){
+        names(x) <- toupper(names(x))
+        x
+      }
+    ){
+      self$set_col_types(col_types)
+      self$set_fmt(fmt)
+      self$set_timestamp_fmt(timestamp_fmt)
+      self$set_colors(colors)
+      self$set_pad_levels(pad_levels)
+
+      self$format_table_name <- format_table_name
+      self$format_colnames   <- format_colnames
+      self$format_data       <- format_data
+
+      self
     }
   )
 )
@@ -497,7 +610,78 @@ LayoutDb2 <- R6::R6Class(
 
 
 #' @export
-LayoutRjdbc <- LayoutDb2
+LayoutRjdbc <- R6::R6Class(
+  "LayoutDbi",
+  inherit = LayoutDbi,
+  public = list(
+    initialize = function(
+      col_types = NULL,
+      fmt = "%L [%t] %m  %f",
+      timestamp_fmt = "%Y-%m-%d %H:%M:%S",
+      colors = getOption("lgr.colors", list()),
+      pad_levels = "right",
+
+      format_table_name =  as_tname,
+      format_colnames = toupper,
+      format_data = function(x){
+        names(x) <- toupper(names(x))
+        x
+      }
+    ){
+      self$set_col_types(col_types)
+      self$set_fmt(fmt)
+      self$set_timestamp_fmt(timestamp_fmt)
+      self$set_colors(colors)
+      self$set_pad_levels(pad_levels)
+
+      self$format_table_name <- format_table_name
+      self$format_colnames   <- format_colnames
+      self$format_data       <- format_data
+
+      self
+    }
+  )
+)
+
+
+
+
+# +- LayoutRjdbcDb2 ----------------------------------------------------------
+
+#' @export
+LayoutRjdbcDb2 <- R6::R6Class(
+  "LayoutDbi",
+  inherit = LayoutDbi,
+  public = list(
+    initialize = function(
+      col_types = NULL,
+      fmt = "%L [%t] %m  %f",
+      timestamp_fmt = "%Y-%m-%d %H:%M:%S",
+      colors = getOption("lgr.colors", list()),
+      pad_levels = "right",
+
+      format_table_name =  function(x) toupper(as_tname(x)),
+      format_colnames = toupper,
+      format_data = function(x){
+        names(x) <- toupper(names(x))
+        x
+      }
+    ){
+      self$set_col_types(col_types)
+      self$set_fmt(fmt)
+      self$set_timestamp_fmt(timestamp_fmt)
+      self$set_colors(colors)
+      self$set_pad_levels(pad_levels)
+
+      self$format_table_name <- format_table_name
+      self$format_colnames   <- format_colnames
+      self$format_data       <- format_data
+
+      self
+    }
+  )
+)
+
 
 
 
@@ -649,6 +833,13 @@ select_dbi_layout <- function(
 ){
   cls <- c(class(conn))
 
+  if (identical(class, "MySQLConnection")){
+    stop(
+      "'RMySQL' is not supported by lgr. Please use the newer 'RMariaDB'",
+      "package to connect to MySQL and MariaDB databases"
+    )
+  }
+
   res <- switch(
     cls,
     "PostgreSQLConnection" = LayoutPostgres$new(),
@@ -703,4 +894,3 @@ get_col_types <- function(conn, table){
 
   res
 }
-

@@ -5,12 +5,6 @@
 #'
 #' @name simple_logging
 #'
-#' @examples
-#' FATAL("This is an important message about %s going wrong", "something")
-#' DEBUG("Debug messages are hidden by default")
-#' console_threshold("debug")  # you must use lower case names here
-#' DEBUG("Unless we lower the threshold")
-#'
 NULL
 
 
@@ -19,58 +13,89 @@ NULL
 #' Basic Setup for the Logging System
 #'
 #' Quick and easy way to configure the root logger for logging to a file.
-#' **experimental**, paramters will likely change in the next lgr version.
 #'
-#' @param file `character` scalar: If not `NULL` a [AppenderFile] will be created
-#'   that logs to this file. If the filename ends in `.jsonl` an [AppenderJson]
-#'   will be created instead.
-#' @param fmt `character` scalar: Format to use if `file` is supplied and not
-#'   a `.jsonl` file. If `NULL` it defaults to `"%L [%t] %m"`
-#'   (see [format.LogEvent])
+#' @param file `character` scalar: If not `NULL` a [AppenderFile] will be
+#'   created that logs to this file. If the filename ends in `.jsonl`, the
+#'   Appender will be set up to use the [JSON
+#'   Lines](http://jsonlines.org/) format instead of plain text (see
+#'   [AppenderFile] and [AppenderJson]).
+#' @param fmt `character` scalar: Format to use if `file` is supplied and not a
+#'   `.jsonl` file. If `NULL` it defaults to `"%L [%t] %m"` (see
+#'   [format.LogEvent])
+#' @param console_fmt `character` scalar: like `fmt` but used for console output
+#' @param console_timestamp_fmt `character` scalar: like `timestamp_fmt` but
+#'   used for console output
 #' @inheritParams print.LogEvent
 #' @inheritParams Logger
-#' @param appenders a single [Appender] or a list thereof. Must be `NULL` if
-#'   if `file` is already specified.
-#' @param threshold `character` or `integer` scalar.
-#'   The minimum [log level][log_levels] that should be processed by the root
-#'   logger.
-#' @param memory `logical` scalar. add a memory appender
-#' @param console `logical` scalar. add a console appender
+#' @param appenders a single [Appender] or a list thereof.
+#' @param threshold `character` or `integer` scalar. The minimum [log
+#'   level][log_levels] that should be processed by the root logger.
+#' @param memory `logical` scalar. or a `threshold` (see above). Add an Appender
+#'   that logs to a memory buffer, see also [show_log()] and [AppenderBuffer]
+#' @param console `logical` scalar or a `threshold` (see above). Add an appender
+#'   logs to the console (i.e. displays messages in an interactive R session)
 #'
 #' @return the `root` Logger (lgr)
 #' @export
-#'
-#' @examples
-#' \dontrun{
-#' make the root logger log to a file
-#' basic_config(file = tempfile())
-#' }
 basic_config <- function(
   file = NULL,
-  fmt = NULL,
+  fmt = "%L [%t] %m",
   timestamp_fmt = "%Y-%m-%d %H:%M:%OS3",
   threshold = "info",
-  console = TRUE,
-  memory = TRUE,
-  appenders = NULL
+  appenders = NULL,
+  console = if (is.null(appenders)) "all" else FALSE,
+  console_fmt = "%L [%t] %m %f",
+  console_timestamp_fmt = "%H:%M:%OS3",
+  memory  = FALSE
 ){
-  warning("This function is still experimental and paramters might change in the near future", call. = FALSE)
+  stopifnot(
+    is.null(file) || is_scalar_character(file),
+    is_scalar_character(fmt),
+    is_scalar_character(console_fmt),
+    is_scalar_character(timestamp_fmt),
+    is_threshold(threshold),
+    is_scalar_bool(console) || is_threshold(console),
+    is_scalar_bool(memory) || is_threshold(console),
+    is.null(appenders) || is.list(appenders) || inherits(appenders, "Appender")
+  )
 
-  l <- get_logger("root")
-  l$config(logger_config(threshold = NA_integer_))  # reset root logger config
+  l <-
+    get_logger()$
+    config(NULL)$
+    set_threshold(threshold)
 
 
-  # threshold
-  assert(!is.null(threshold))
-  l$set_threshold(threshold)
+
+  if (length(appenders)){
+    assert(
+      is.null(file)    || !"file" %in% names(appenders),
+      "If `appenders` contains an appender named `file`, the `file` argument to basic_config() must be `NULL`"
+    )
+    assert(
+      isFALSE(console) || !"console" %in% names(appenders),
+      "If `appenders` contains an appender named `console`, the `console` argument to basic_config() must be `FALSE`"
+    )
+    assert(
+      isFALSE(memory)  || !"memory" %in% names(appenders),
+      "If `appenders` contains an appender named `memory`, the `memory` argument to basic_config() must be `FALSE`"
+    )
+
+    l$set_appenders(appenders)
+  }
 
 
   if (!is.null(file)){
-    assert(is.null(appenders), "`appenders` must be NULL if `file` is specified")
-    pos <- regexpr("\\.([[:alnum:]]+)$", file)
-    ext <- ifelse(pos > -1L, substring(file, pos + 1L), "")
+    ext <- tools::file_ext(file)
 
-    if (identical(tolower(ext), "jsonl")){
+    if (identical(tolower(ext), "json")){
+      stop(
+        "Please use `.jsonl` and not `.json` as file extension for JSON log",
+        "files. The reason is that that JSON files created",
+        "by lgr are not true JSON files but JSONlines files.",
+        "See http://jsonlines.org/ for more infos."
+      )
+
+    } else if (identical(tolower(ext), "jsonl")){
       assert (is.null(fmt), "`fmt` must be null if `file` is a '.jsonl' file")
       l$add_appender(
         name = "file",
@@ -78,8 +103,6 @@ basic_config <- function(
       )
 
     } else {
-      if (is.null(fmt))  fmt <- "%L [%t] %m"
-
       l$add_appender(
         name = "file",
         AppenderFile$new(
@@ -94,24 +117,26 @@ basic_config <- function(
     }
   }
 
-  if (console){
-    if (is.null(fmt))  fmt <- "%L [%t] %m"
+
+  if (!isFALSE(console)){
+    if (isTRUE(console)) console <- 400
     l$add_appender(
       name = "console",
       AppenderConsole$new(
-        threshold = NA,
+        threshold = console,
         layout = LayoutFormat$new(
           colors = getOption("lgr.colors"),
-          fmt = fmt,
-          timestamp_fmt = timestamp_fmt
+          fmt = console_fmt,
+          timestamp_fmt = console_timestamp_fmt
         )
       )
     )
   }
 
-  if (memory){
+  if  (!isFALSE(memory)){
+    if (isTRUE(memory)) memory <- NA
     l$add_appender(name = "memory", AppenderBuffer$new(
-      threshold = NA,
+      threshold = memory,
       should_flush = function(event) FALSE
     ))
   }
@@ -119,6 +144,7 @@ basic_config <- function(
 
   lgr
 }
+
 
 
 
@@ -137,6 +163,10 @@ basic_config <- function(
 #'   as a `character` vector.
 #' @rdname simple_logging
 FATAL <- function(msg, ...){
+  .Deprecated(msg = paste(
+    "FATAL(), ERROR(),... are deprecated and will be removed.",
+    "Use lgr$fatal(), lgr$error(),... instead."
+  ))
   lgr$fatal(msg, ...)
 }
 
@@ -146,6 +176,10 @@ FATAL <- function(msg, ...){
 #' @export
 #' @rdname simple_logging
 ERROR <- function(msg, ...){
+  .Deprecated(msg = paste(
+    "FATAL(), ERROR(),... are deprecated and will be removed.",
+    "Use lgr$fatal(), lgr$error(),... instead."
+  ))
   lgr$error(msg, ...)
 }
 
@@ -155,6 +189,10 @@ ERROR <- function(msg, ...){
 #' @export
 #' @rdname simple_logging
 WARN <- function(msg, ...){
+  .Deprecated(msg = paste(
+    "FATAL(), ERROR(),... are deprecated and will be removed.",
+    "Use lgr$fatal(), lgr$error(),... instead."
+  ))
   lgr$warn(msg, ...)
 }
 
@@ -164,6 +202,10 @@ WARN <- function(msg, ...){
 #' @export
 #' @rdname simple_logging
 INFO <- function(msg, ...){
+  .Deprecated(msg = paste(
+    "FATAL(), ERROR(),... are deprecated and will be removed.",
+    "Use lgr$fatal(), lgr$error(),... instead."
+  ))
   lgr$info(msg, ...)
 }
 
@@ -173,6 +215,10 @@ INFO <- function(msg, ...){
 #' @export
 #' @rdname simple_logging
 DEBUG <- function(msg, ...){
+  .Deprecated(msg = paste(
+    "FATAL(), ERROR(),... are deprecated and will be removed.",
+    "Use lgr$fatal(), lgr$error(),... instead."
+  ))
   lgr$debug(msg, ...)
 }
 
@@ -182,6 +228,10 @@ DEBUG <- function(msg, ...){
 #' @export
 #' @rdname simple_logging
 TRACE <- function(msg, ...){
+  .Deprecated(msg = paste(
+    "FATAL(), ERROR(),... are deprecated and will be removed.",
+    "Use lgr$fatal(), lgr$error(),... instead."
+  ))
   lgr$trace(msg, ...)
 }
 
@@ -279,9 +329,9 @@ console_threshold <- function(
 #' @export
 #' @examples
 #' add_appender(AppenderConsole$new(), "second_console_appender")
-#' FATAL("Multiple console appenders are a bad idea")
+#' lgr$fatal("Multiple console appenders are a bad idea")
 #' remove_appender("second_console_appender")
-#' INFO("Good that we defined an appender name, so it's easy to remove")
+#' lgr$info("Good that we defined an appender name, so it's easy to remove")
 add_appender <- function(
   appender,
   name = NULL,
@@ -309,10 +359,11 @@ remove_appender <- function(
 #' @description
 #' `show_log()` displays the last `n` log entries of `target` if `target` is
 #' an Appender with a `show()` method or a Logger with at least one such
-#' Appender attached. `target` defaults to the root logger, which has an
-#' [AppenderDt] attached by default if the package **data.table** is installed.
-#' With the default logging settings this includes also `TRACE` and `DEBUG`
-#' messages, even if they were not printed to the console before.
+#' Appender attached. `target` defaults to the root logger. If you have
+#' configured the root logger with
+#' [`basic_config(memory = TRUE)`][basic_config()], it will have an
+#' [AppenderBuffer] that logs all log messages (including `TRACE` and `DEBUG`),
+#' even if they were not printed to the console before.
 #'
 #' `show_data()` and `show_dt()` work similar to `show_log()`, except that
 #' they return the log as `data.frame` or `data.table` respectively.
@@ -382,6 +433,10 @@ find_target <- function(
   name
 ){
   assert(is_scalar_character(name))
+
+  if (is_scalar_character(x)) {
+    x <- get_logger(x)
+  }
 
   if (inherits(x, "Appender")){
     if (name %in% names(x)){

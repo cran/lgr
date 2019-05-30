@@ -14,10 +14,10 @@ but also more complex and slightly less performant.
 x <- LayoutGlue$new(fmt = "{pad_right(colorize_levels(toupper(level_name)), 5)}
   [{timestamp}] msg")
 
-x$format_event(event)
-x$set_fmt(x)
-x$set_colors(x)
 x$clone(deep = FALSE)
+x$format_event(event)
+x$set_colors(x)
+x$set_fmt(x)
 
 x$fmt
 
@@ -48,7 +48,10 @@ argument \code{fmt} that is passed on to \code{glue::glue()} for each LogEvent.
 }
 
 \examples{
-lg <- Logger$new("testlogger", appenders = AppenderConsole$new(), propagate = FALSE)
+lg <- get_logger("test")$
+  set_appenders(AppenderConsole$new())$
+  set_propagate(FALSE)
+
 lg$appenders[[1]]$set_layout(LayoutGlue$new())
 lg$fatal("test")
 
@@ -58,7 +61,7 @@ lg$appenders[[1]]$layout$set_fmt(
   "{logger$name} {level_name}({level}) {caller}: {toupper(msg)} {{custom: {custom}}}"
 )
 lg$fatal("test", custom = "foobar")
-
+lg$config(NULL)  # reset logger config
 
 }
 \seealso{

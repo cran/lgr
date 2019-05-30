@@ -31,21 +31,21 @@ x <- AppenderDt$new(threshold = NA_integer_, layout = LayoutFormat$new(fmt =
   NA_character_, caller = NA_character_, msg = NA_character_, .custom =
   list(list())), buffer_size = 1e+05, filters = NULL)
 
-x$append(event)
-x$show(threshold = NA_integer_, n = 20L)
-x$set_layout(layout)
-x$set_threshold(level)
-x$filter(event)
 x$add_filter(filter, name = NULL)
+x$append(event)
+x$filter(event)
 x$remove_filter(pos)
 x$set_filters(filters)
+x$set_layout(layout)
+x$set_threshold(level)
+x$show(threshold = NA_integer_, n = 20L)
 
 x$data
 x$destination
 x$dt
+x$filters
 x$layout
 x$threshold
-x$filters
 
 }
 }
@@ -165,12 +165,12 @@ and AppenderBuffer if you actually want to buffer events
 }
 
 \examples{
-lg <- Logger$new(
-  "test",
-  appenders = list(memory = AppenderDt$new()),
+lg <- get_logger("test")
+lg$config(list(
+  appenders = list(memory = AppenderBuffer$new()),
   threshold = NA,
   propagate = FALSE  # to prevent routing to root logger for this example
-)
+))
 lg$debug("test")
 lg$error("test")
 
@@ -187,7 +187,7 @@ show_log(target = lg)
 lg$info("the iris data frame", caps = LETTERS[1:5])
 lg$appenders$memory$data
 lg$appenders$memory$data$.custom[[3]]$caps
-
+lg$config(NULL)
 }
 \seealso{
 \link{LayoutFormat}, \link{simple_logging}, \link[data.table:data.table]{data.table::data.table}

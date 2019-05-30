@@ -32,7 +32,8 @@
 #'
 #' The `name` is potentially a `/` separated hierarchical value like
 #' `foo/bar/baz`. Loggers further down the hierarchy are children of the loggers
-#' above.
+#' above. (This mechanism does not work of the Logger is initialized with
+#' `Logger$new()`)
 #'
 #' All calls to `get_logger()` with the same name return the same Logger
 #' instance. This means that Logger instances never need to be passed between
@@ -49,14 +50,6 @@
 #' loggers is via its `$config()` method.
 #'
 #' \describe{
-#'   \item{`name`, `set_name(x)`}{`character` scalar. A name for the Logger that should be
-#'     unique among Loggers. This logger name is used in the Loggers print
-#'     method and can be used by Appenders to indicate which logger the
-#'     log message came from. If you define a Logger for an R Package (the most
-#'     common case for defining new Loggers), the logger name should be the
-#'     same name as the Package name. If you do not define a Logger name
-#'     manually, a warning will be thrown.}
-#'
 #'   \item{`appenders`, `set_appenders(x)`}{A single [Appender] or a `list`
 #'     thereof. Appenders control the output of a Logger. Be aware that a Logger
 #'     also inherits the Appenders of its ancestors
@@ -81,6 +74,12 @@
 #' Loggers also have the following additional read-only bindings:
 #'
 #' \describe{
+#'   \item{`name`}{`character` scalar. A hierarchical value
+#'     (separated by `"/"``) that indicates the loggers name and its ancestors.
+#'     If a logger is created with [get_logger()] uniqueness of the name is
+#'     enforced.
+#'   }
+#'
 #'   \item{`ancestry`}{A named `logical` vector of containing
 #'   the propagate value of each Logger upper the inheritance tree. The names
 #'   are the names of the appenders. `ancestry` is an S3 class with a custom
@@ -133,12 +132,17 @@
 #'     filters.
 #'   }
 #'
-#'   \item{`config(cfg  = NULL, file = NULL, text = NULL`}{Load a Logger
-#'     configuration. `cfg` can be either a special list object, the path to
-#'     a YAML config file, or a character scalar containing YAML. The arguments
-#'     `file` and `text` can used alternatively and enforce that the supplied
-#'     argument is of the specified type.
-#'     See [logger_config] for details.
+#'   \item{`config(cfg, file, text, list`}{Load a Logger
+#'     configuration. `cfg` can be either
+#'   * a special list object with any or all of the the following elements:
+#'     `appenders`, `threshold`, `filters`, `propagate`, `exception_handler`,
+#'   * the path to a `YAML`/`JSON` config file,
+#'   * a `character` scalar containing `YAML`,
+#'   *  `NULL` (to reset the logger config to the default/unconfigured state)
+#'
+#'   The arguments `file`, `text` and `list` can be used as an alternative to
+#'     `cfg` that  enforces that the  supplied  argument is of the specified
+#'     type. See [logger_config] for details.
 #'   }
 #'
 #'   \item{`add_appender(appender, name = NULL)`, `remove_appender(pos)`}{
@@ -177,13 +181,19 @@
 #' @seealso [glue](https://glue.tidyverse.org/)
 #' @examples
 #' # lgr::lgr is the root logger that is always available
-#' lgr$info("Today is %s", Sys.Date() )
+#' lgr$info("Today is a good day")
 #' lgr$fatal("This is a serious error")
 #'
-#' # You can create new loggers with Logger$new(). The following creates a
-#' # logger that logs to a temporary file.
+#' # Loggers use sprintf() for string formatting by default
+#' lgr$info("Today is %s", Sys.Date() )
+#'
+#' # If no unnamed `...` are present, msg is not passed through sprintf()
+#' lgr$fatal("100% bad")  # so this works
+#' lgr$fatal("%s%% bad", 100)  # if you use unnamed arguments, you must escape %
+#'
+#' # You can create new loggers with get_logger()
 #' tf <- tempfile()
-#' lg <- Logger$new("mylogger", appenders = AppenderFile$new(tf))
+#' lg <- get_logger("mylogger")$set_appenders(AppenderFile$new(tf))
 #'
 #' # The new logger passes the log message on to the appenders of its parent
 #' # logger, which is by default the root logger. This is why the following
@@ -191,11 +201,10 @@
 #' lg$fatal("blubb")
 #' readLines(tf)
 #'
-#' # This logger's print() method depicts this relationship
-#' lg2 <- Logger$new("lg/child")
-#' print(lg2)
-#' print(lg2$ancestry)
-#' print(lg2$name)
+#' # This logger's print() method depicts this relationship.
+#' child <- get_logger("lg/child")
+#' print(child)
+#' print(child$name)
 #'
 #' # use formatting strings and custom fields
 #' tf2 <- tempfile()
@@ -205,16 +214,60 @@
 #' cat(readLines(tf2), sep = "\n")
 #'
 #' # cleanup
-#' unlink(tf)
-#' unlink(tf2)
-#'
-#' # The following works because if no unnamed `...` are present, msg is not
-#' # passed through sprintf() (otherwise you would have to escape the "%")
-#' lg$fatal("100%")
+#' unlink(c(tf, tf2))
+#' lg$config(NULL)  # reset logger config
 #'
 #' # LoggerGlue
-#' lg <- LoggerGlue$new("glue")
-#' lg$fatal("blah ", "fizz is set to: {fizz}", foo = "bar", fizz = "buzz")
+#' # You can also create a new logger that uses the awesome glue library for
+#' # string formatting instead of sprintf
+#'
+#' if (requireNamespace("glue")){
+#'
+#'   lg <- get_logger_glue("glue")
+#'   lg$fatal("blah ", "fizz is set to: {fizz}", foo = "bar", fizz = "buzz")
+#'   # prevent creation of custom fields with prefixing a dot
+#'   lg$fatal("blah ", "fizz is set to: {.fizz}", foo = "bar", .fizz = "buzz")
+#'
+#'   #' # completely reset 'glue' to an unconfigured vanilla Logger
+#'   get_logger("glue", reset = TRUE)
+#'
+#' }
+#'
+#'
+#' # Configuring a Logger
+#' lg <- get_logger("test")
+#' lg$config(NULL)  # resets logger to unconfigured state
+#'
+#' # With setters
+#' lg$
+#'   set_threshold("error")$
+#'   set_propagate(FALSE)$
+#'   set_appenders(AppenderConsole$new(threshold = "info"))
+#'
+#' lg$config(NULL)
+#'
+#' # With a list
+#' lg$config(list(
+#'   threshold = "error",
+#'   propagate = FALSE,
+#'   appenders = list(AppenderConsole$new(threshold = "info"))
+#' ))
+#'
+#' lg$config(NULL)  # resets logger to unconfigured state
+#'
+#' # Via YAML
+#' cfg <- "
+#' Logger:
+#'   threshold: error
+#'   propagate: false
+#'   appenders:
+#'     AppenderConsole:
+#'       threshold: info
+#' "
+#'
+#' lg$config(cfg)
+#' lg$config(NULL)
+
 NULL
 
 
@@ -247,7 +300,7 @@ Logger <- R6::R6Class(
         )
       }
 
-      self$set_name(name)
+      private$set_name(name)
       private$.last_event <- LogEvent$new(self)
 
       self$set_threshold(threshold)
@@ -267,7 +320,7 @@ Logger <- R6::R6Class(
       timestamp = Sys.time(),
       caller = get_caller(-7)
     ){
-      if (identical(get("threshold", envir = self), 0L)) return(NULL)
+      if (identical(get("threshold", envir = self), 0L))  return(invisible())
 
       tryCatch({
         # preconditions
@@ -354,7 +407,7 @@ Logger <- R6::R6Class(
 
 
     fatal = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 100L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 100L)) return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -366,7 +419,7 @@ Logger <- R6::R6Class(
     },
 
     error = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 200L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 200L)) return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -378,7 +431,7 @@ Logger <- R6::R6Class(
     },
 
     warn = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 300L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 300L)) return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -390,7 +443,7 @@ Logger <- R6::R6Class(
     },
 
     info = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 400L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 400L))  return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -402,7 +455,7 @@ Logger <- R6::R6Class(
     },
 
     debug = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 500L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 500L))  return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -414,7 +467,7 @@ Logger <- R6::R6Class(
     },
 
     trace = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 600L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 600L))  return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -427,36 +480,49 @@ Logger <- R6::R6Class(
 
 
     config = function(
-      cfg  = NULL,
-      file = NULL,
-      text = NULL
+      cfg,
+      file,
+      text,
+      list
     ){
       assert(
-        is.null(cfg) + is.null(file) + is.null(text) >= 2,
-        "You can only specify one of `cfg`, `file` and `text`."
+        missing(cfg) + missing(file) + missing(text) + missing(list) >= 3,
+        "You can only specify one of `cfg`, `file`, `text` and `list`."
       )
 
-      if (!is.null(cfg)){
-        cfg <- as_logger_config(cfg)
+      if (!missing(cfg)){
+        if (is.list(cfg)){
+          cfg <- parse_logger_config(cfg)
+        } else {
+          cfg <- as_logger_config(cfg)
+        }
 
-      } else if (!is.null(file)){
+      } else if (!missing(file)){
         assert(
           is_scalar_character(file) && !grepl("\n", file) && file.exists(file),
           "`file` is not a valid path to a readable file"
         )
         cfg <- as_logger_config(file)
 
-      } else if (!is.null(text)){
+      } else if (!missing(text)){
         assert(
           is_scalar_character(text) && grepl("\n", text),
           "`text` must be a character scalar containing valid YAML"
         )
         cfg <- as_logger_config(text)
 
+      } else if (!missing(list)){
+        cfg <- parse_logger_config(list)
+
       } else {
         cfg <- as_logger_config()
       }
 
+      if (is_logger_config(cfg)){
+        cfg <- parse_logger_config(cfg)
+      }
+
+      assert(is_parsed_logger_config(cfg))
       self$set_threshold(cfg$threshold)
       self$set_appenders(cfg$appenders)
       self$set_propagate(cfg$propagate)
@@ -510,12 +576,6 @@ Logger <- R6::R6Class(
 
     handle_exception = function(...){
       private$.exception_handler(...)
-    },
-
-    set_name = function(x){
-      assert(is_scalar_character(x))
-      private$.name <- x
-      invisible(self)
     },
 
     set_exception_handler = function(fun){
@@ -624,6 +684,11 @@ Logger <- R6::R6Class(
 
   # private -----------------------------------------------------------------
   private = list(
+    set_name = function(x){
+      assert(is_scalar_character(x))
+      private$.name <- x
+      invisible(self)
+    },
 
     finalize = function(){
       # ensure appenders are destroyed before logger is destroyed so that the
@@ -661,7 +726,7 @@ LoggerGlue <- R6::R6Class(
   public = list(
 
     fatal = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 100L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 100L))  return(invisible())
 
       force(.envir)
       get("log", envir = self)(
@@ -674,7 +739,7 @@ LoggerGlue <- R6::R6Class(
     },
 
     error = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 200L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 200L))  return(invisible())
 
       get("log", envir = self)(
         ...,
@@ -686,7 +751,7 @@ LoggerGlue <- R6::R6Class(
     },
 
     warn = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 300L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 300L))  return(invisible())
 
       get("log", envir = self)(
         ...,
@@ -698,7 +763,7 @@ LoggerGlue <- R6::R6Class(
     },
 
     info = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 400L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 400L))  return(invisible())
 
       get("log", envir = self)(
         ...,
@@ -710,7 +775,7 @@ LoggerGlue <- R6::R6Class(
     },
 
     debug = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 500L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 500L))  return(invisible())
 
       force(.envir)
       get("log", envir = self)(
@@ -723,7 +788,7 @@ LoggerGlue <- R6::R6Class(
     },
 
     trace = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 600L)) return(NULL)
+      if (isTRUE(get("threshold", envir = self) < 600L))  return(invisible())
 
       force(.envir)
       get("log", envir = self)(
@@ -742,7 +807,7 @@ LoggerGlue <- R6::R6Class(
       caller = get_caller(-7),
       .envir = parent.frame()
     ){
-      if (identical(get("threshold", envir = self), 0L)) return(NULL)
+      if (identical(get("threshold", envir = self), 0L))  return(invisible())
 
       force(.envir)
       tryCatch({
@@ -829,6 +894,23 @@ LoggerRoot <- R6::R6Class(
   inherit = Logger,
   cloneable = FALSE,
   public <- list(
+    config = function(
+      cfg,
+      file,
+      text
+    ){
+      if (is.null(cfg)){
+        cfg <- logger_config()
+        cfg$threshold <- getOption("lgr.default_threshold", 400L)
+      }
+
+      super$config(
+        cfg,
+        file,
+        text
+      )
+    },
+
     set_threshold = function(level){
       if (is.null(level)){
         warning("Cannot set `threshold` to `NULL` for the root Logger")

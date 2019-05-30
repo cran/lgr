@@ -24,6 +24,9 @@ lgr$appenders$file$set_layout(LayoutFormat$new(timestamp_fmt = "%B %d %T"))
 lgr$info("No, I am quite serious")
 readLines(tf)
 
+#cleanup
+unlink(tf)
+
 ## ------------------------------------------------------------------------
 # cleanup behind the old Appender
 unlink(tf)  
@@ -38,31 +41,6 @@ cat(readLines(tf))
 
 ## ------------------------------------------------------------------------
 read_json_lines(tf)
-
-## ----eval = FALSE--------------------------------------------------------
-#  
-#  # explicit setup with logger_config
-#  lgr$config(logger_config(
-#    threshold = "info",
-#    appenders = AppenderFile$new(
-#      file = "path/to/logfile",
-#      layout = LayoutFormat(fmt = "[%L] %m")
-#    )
-#  ))
-
-## ------------------------------------------------------------------------
-#### contents of path/to/config.yaml #####
-# Logger:
-#   name: test/blubb
-#   threshold: info
-#   appenders:
-#     AppenderFile:
-#       file: /path/to/logfile
-#       LayoutFormat: 
-#          fmt: '[%L] %m'
-
-## ----eval = FALSE--------------------------------------------------------
-#  lgr$config("path/to/config.yaml")
 
 ## ------------------------------------------------------------------------
 # The default console appender displays custom fields as pseudo-json after the message
@@ -97,9 +75,8 @@ knitr::kable(ll)
 ## ------------------------------------------------------------------------
 lgr$fatal("This is an important message about %s going wrong", "->something<-")
 lgr$trace("Trace messages are still hidden")
-lgr$appenders$console$set_threshold("trace")
+lgr$set_threshold("trace")
 lgr$trace("Unless we lower the threshold")
-lgr$appenders$memory$show(3)
 
 
 ## ------------------------------------------------------------------------
@@ -154,8 +131,6 @@ readLines(tf)
 
 # Remove the appender again
 lgr$remove_appender("file")
-
-## ----echo = FALSE--------------------------------------------------------
 unlink(tf)
 
 ## ------------------------------------------------------------------------
@@ -175,6 +150,40 @@ lg$info("For more info on glue see {website}", website = "https://glue.tidyverse
 
 ## ------------------------------------------------------------------------
 lg$info("Glue is available from {.cran}", .cran = "https://CRAN.R-project.org/package=glue")
+
+## ------------------------------------------------------------------------
+lg <- get_logger("test")
+lg$config(NULL)  # resets logger to unconfigured state
+lg$set_threshold("fatal")
+
+## ------------------------------------------------------------------------
+lg$
+  set_threshold("info")$
+  set_appenders(AppenderConsole$new(threshold = "info"))$
+  set_propagate(FALSE)
+
+## ------------------------------------------------------------------------
+lg$config(list(
+  threshold = "info",
+  propagate = FALSE,
+  appenders = AppenderConsole$new(threshold = "info")
+))
+
+## ----eval = FALSE--------------------------------------------------------
+#  lg$config("path/to/config.yaml")
+#  lg$config("path/to/config.json")
+
+## ------------------------------------------------------------------------
+# Via YAML
+cfg <- "
+  Logger:
+    threshold: info
+    propagate: false
+    appenders:
+      AppenderConsole:
+        threshold: info
+"
+lg$config(cfg)
 
 ## ------------------------------------------------------------------------
 lg <- get_logger("test")
@@ -224,7 +233,33 @@ lg$appenders$json$data
 ## ----echo = FALSE--------------------------------------------------------
 lg$appenders$json$show()
 
-## ---- echo = FALSE-------------------------------------------------------
+## ------------------------------------------------------------------------
+# cleanup
+lg$config(NULL)
+unlink(tf)
+
+## ------------------------------------------------------------------------
+# install.packages("rotor")
+tf <- tempfile(fileext = ".log")
+
+lg <- get_logger("test")$
+  set_propagate(FALSE)$
+  set_appenders(list(rotating = AppenderFileRotating$new(
+    file = tf, 
+    size = "10 kb",
+    max_backups = 5))
+  )
+
+for (i in 1:100) lg$info(paste(LETTERS, sep = "-"))
+
+# display info on the backups of tf
+lg$appenders$rotating$backups
+
+# manually delete all backups
+invisible(lg$appenders$rotating$prune(0))
+lg$appenders$rotating$backups
+
+#cleanup
 unlink(tf)
 
 ## ------------------------------------------------------------------------
@@ -248,24 +283,26 @@ print(lg)
 ## ------------------------------------------------------------------------
 lg$info("Nothing to see here")
 
-## ----echo = FALSE--------------------------------------------------------
+## ------------------------------------------------------------------------
+# cleanup
+lg$config(NULL)
 unlink(tf)
 
 ## ------------------------------------------------------------------------
 lg <- get_logger("buffer")
 
-lg$config(logger_config(
-  threshold = NA,
-  propagate = FALSE,  # to suppress console output
-  appenders = AppenderBuffer$new(
+lg$
+  set_threshold(NA)$
+  set_propagate(FALSE)$
+  set_appenders(
+    AppenderBuffer$new(
     threshold = NA,
     buffer_size = 5, # can hold 5 events, the 6th will trigger flushing
     flush_on_exit = FALSE,
     flush_on_rotate = FALSE,
     flush_threshold = "error",
     appenders = AppenderConsole$new(threshold = NA)
-  )
-))
+  ))
 
 # The for loop below stores 8 log events in the Buffer
 for (nm in month.name[1:8]) lg$debug("%s", nm)
@@ -276,15 +313,16 @@ lg$error("But the days grow short when you reach September")
 ## ------------------------------------------------------------------------
 # install.packages("RSQLite")
 lg <- get_logger("db_logger")
-lg$set_propagate(FALSE)
-lg$add_appender(
-  name = "db", 
-  AppenderDbi$new(
-    conn = DBI::dbConnect(RSQLite::SQLite()),
-    table = "log",
-    buffer_size = 2L
+lg$
+  set_propagate(FALSE)$
+  add_appender(
+    name = "db", 
+    AppenderDbi$new(
+      conn = DBI::dbConnect(RSQLite::SQLite()),
+      table = "log",
+      buffer_size = 2L
+    )
   )
-)
 
 lg$info("Logging to databases uses a buffer")
 lg$info("As the buffer size is 2, no insert took place till now")

@@ -11,7 +11,9 @@ For details please refer to \code{vignette("lgr", package = "lgr")}.
 \section{Options}{
 
 
-You can also set these options in your \code{.Rprofile} to make them permanent
+You can also set these options in your \code{.Rprofile} to make them permanent.
+Some options can also be set via environment variables (The environment
+variables are only used if the option is not set manually from R).
 
 \describe{
 \item{\code{lgr.colors}}{a \code{list} of \code{functions} used for coloring the log
@@ -21,9 +23,23 @@ package \strong{crayon}}
 known to lgr for labeling, setting thresholds, etc... . Instead of
 modifying this option manually use \code{\link[=add_log_levels]{add_log_levels()}} and
 \code{\link[=remove_log_levels]{remove_log_levels()}}}
+\item{\code{lgr.default_threshold}}{
+\code{character} or \code{integer} scalar. The minimum \link[=log_levels]{log level} that
+should be processed by the root logger. Defaults to \code{400} (\code{"info"}),
+or to the value of the environment variable \code{LGR_DEFAULT_THRESHOLD}
+if it is set. This option overrides the threshold specified in
+\code{lgr.default_config} if both are set.
+}
+\item{\code{lgr.default_config}}{
+Default configuration for the root logger. Can either be a special list
+object, a path to a YAML file, or a character scalar containing YAML
+code. See \link{logger_config} for details. Defaults to the value of the
+environment variable \code{LGR_DEFAULT_CONFIG} if it is set.
+}
 \item{\code{lgr.suspend_logging}}{\code{TRUE} or \code{FALSE}. Suspend all logging for
-all loggers.  Instead of modifying this option manually use
-\code{\link[=suspend_logging]{suspend_logging()}} and \code{\link[=unsuspend_logging]{unsuspend_logging()}}}
+all loggers. Defaults to the \code{TRUE} if the environment variable
+\code{LGR_SUSPEND_LOGGING} is set to \code{"TRUE"}. Instead of modifying this
+option manually use \code{\link[=suspend_logging]{suspend_logging()}} and \code{\link[=unsuspend_logging]{unsuspend_logging()}}}
 \item{\code{lgr.user}}{a \code{character} scalar. The default username for
 \code{lgr::get_user()}.
 }
@@ -33,7 +49,7 @@ all loggers.  Instead of modifying this option manually use
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/s-fleck/lgr}
+  \item \url{https://s-fleck.github.io/lgr}
   \item Report bugs at \url{https://github.com/s-fleck/lgr/issues}
 }
 

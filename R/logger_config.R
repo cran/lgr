@@ -13,44 +13,68 @@
 #' @param propagate see [Logger]
 #'
 #' @return a `list` with the subclass `"logger_config"`
-#' @export
 #'
-#' @examples
-#' lg <- get_logger("test")
-#'
-#' # explicetely defining logger configurations with logger_config
-#'
-#' # call without arguments to generate the default configuration
-#' cfg <- logger_config()  # same as the unconfigured state of a Logger
-#' lg$config(cfg)
-#'
-#'
-#' # Creating a logger config form YAML
-#' cfg <- "
-#' Logger:
-#'   name: test/blubb
-#'   threshold: info
-#'   propagate: false
-#'   appenders:
-#'     AppenderFile:
-#'       file: /tmp/testlog.txt
-#' "
-#' lg$config(cfg)  # calls as_logger_config() internally
-#' lg$config(logger_config())  # reset logger config to default state
 logger_config <- function(
+  appenders = NULL,
+  threshold = NULL,
+  filters = NULL,
+  exception_handler = NULL,
+  propagate = TRUE
+){
+  # init/preconditions
+  if (is.function(exception_handler)){
+    exception_handler <- deparse(exception_handler)
+
+  } else if (!is.null(exception_handler)){
+    assert(
+      is.character(exception_handler),
+      "'exception_handler' must be a function, a character scalar giving the",
+      "name of a function, or a character vector containing arbitrary R code."
+    )
+  }
+
+  assert(is.null(threshold) || is_threshold(threshold))
+  assert(is.null(appenders) || all(vapply(appenders, is.list, logical(1))))
+  assert(is.null(filters)   || all(vapply(filters,   is.list, logical(1))))
+
+  if (!is.null(propagate)){
+    assert(is_scalar(propagate))
+    if (is.character(propagate))  propagate <- toupper(propagate)
+    propagate <- as.logical(propagate)
+    assert(is_scalar_bool(propagate))
+  }
+
+
+
+  cfg <- compact(list(
+    appenders = appenders,
+    threshold = threshold,
+    filters   = filters,
+    exception_handler = exception_handler,
+    propagate = propagate
+  ))
+
+  class(cfg) <- c("logger_config", "list")
+  cfg
+}
+
+
+
+
+is_logger_config <- function(x){
+  inherits(x, "logger_config")
+}
+
+
+
+
+parsed_logger_config  <- function(
   appenders = list(),
   threshold = NULL,
   filters = list(),
   exception_handler = default_exception_handler,
   propagate = TRUE
 ){
-  assert(is.function(exception_handler))
-  assert(is_scalar_bool(propagate))
-
-  if (!is.null(threshold)){
-    threshold <- standardize_threshold(threshold)
-  }
-
   structure(
     list(
       appenders = standardize_appenders_list(appenders),
@@ -59,9 +83,61 @@ logger_config <- function(
       exception_handler = exception_handler,
       propagate = propagate
     ),
-    class = c("logger_config", "list")
+    class = c("parsed_logger_config", "list")
   )
 }
+
+
+
+
+is_parsed_logger_config <- function(x){
+  inherits(x, "parsed_logger_config")
+}
+
+
+
+
+parse_logger_config <- function(
+  x,
+  defaults = parsed_logger_config()
+){
+  if (is_parsed_logger_config(x)){
+    return(x)
+  } else {
+    assert(all(names(x) %in% names(defaults)))
+  }
+
+
+  if (is_logger_config(x)){
+    objects <- resolve_r6_ctors(x)
+
+    res <- defaults
+
+    if ("appenders" %in% names(x))
+      res$appenders <- standardize_appenders_list(objects$appenders)
+
+    if ("exception_handler" %in% names(x))
+      res$exception_handler <- eval(parse(text = x[["exception_handler"]]))
+
+    if ("propagate" %in% names(x))
+      res$propagate <- as.logical(toupper(x[["propagate"]]))
+
+    if ("threshold" %in% names(x))
+      res$threshold <- standardize_threshold(x$threshold)
+
+    if ("filters" %in% names(x))
+      res$filters <- standardize_filters_list(objects$filters)
+
+    class(res) <-  c("parsed_logger_config", "list")
+
+  } else {
+    res <- do.call(parsed_logger_config, x)
+
+  }
+
+  res
+}
+
 
 
 
@@ -89,22 +165,25 @@ as_logger_config <- function(x){
 
 
 
+#' @export
+as_logger_config.NULL <- function(x){
+  as_logger_config(list())
+}
+
+
+
+
 #' @rdname logger_config
 #' @export
 as_logger_config.list <- function(x){
-  assert(is.list(x))
+  if (identical(names(x), "Logger"))
+    x <- x[["Logger"]]
 
-  assert(setequal(
-    names(x), c("exception_handler", "propagate", "threshold", "appenders", "filters")
+  assert(all(
+    names(x) %in% c("exception_handler", "propagate", "threshold", "appenders", "filters")
   ))
-
-  logger_config(
-    threshold = x$threshold,
-    filters = x$filters,
-    appenders = x$appenders,
-    exception_handler = x$exception_handler,
-    propagate = x$propagate
-  )
+  class(x) <- c("logger_config", class(x))
+  x
 }
 
 
@@ -115,44 +194,36 @@ as_logger_config.list <- function(x){
 as_logger_config.character <- function(
   x
 ){
-  assert_namespace("yaml")
+  if (identical(length(x), 1L) && !grepl("\n", x)){
+    if (
+      identical(tolower(tools::file_ext(x)), "json") &&
+      requireNamespace("jsonlite", quietly = TRUE)
+    ){
+      # if jsonliste is installed use jsonlite for yaml, otherwiese use the
+      # yaml package (since JSON is also valid YAML)
+      dd <- jsonlite::read_json(x, simplifyVector = TRUE)
 
-  if (length(x) > 1 || !grepl("\n", x)){
-    dd <- yaml::read_yaml(file = x)
+    } else {
+      assert(file.exists(x), "The file '", x, "' does not exist.")
+      assert_namespace("yaml")
+      dd <- yaml::read_yaml(file = x)
+    }
   } else {
     dd <- yaml::read_yaml(text = x)
   }
 
   assert(
-    identical(length(names(dd)), 1L),
+    identical(names(dd), "Logger"),
     "If 'x' is a YAML file, it must contain a single logger object"
   )
 
-  res <- resolve_r6_ctors(dd)
-
-  as_logger_config(res)
-}
-
-
-
-
-#' @export
-#' @rdname logger_config
-as_logger_config.Logger <- function(x){
-  logger_config(
-    appenders = x$appenders,
-    threshold = x$threshold,
-    exception_handler = x$exception_handler,
-    filters = x$filters,
-    propagate = x$propagate
-  )
+  as_logger_config(dd)
 }
 
 
 
 
 resolve_r6_ctors <- function(x){
-
   ctors <- lapply(names(x), get0_R6Class)
 
   for (i in seq_along(x)){
@@ -160,20 +231,6 @@ resolve_r6_ctors <- function(x){
 
       args <- resolve_r6_ctors(x[[i]])
       if (is.null(args)) args <- list()
-
-      # Allow user to supply the layout directly without having to specify
-      # the layout: key manually for Appenders
-      if ("Appender" %in% deparse(ctors[[i]]$inherit)){
-        if (!"layout" %in% names(args)){
-          for (j in rev(seq_along(args))){
-            if (inherits(args[[j]], "Layout")){
-              args$layout <- args[[j]]
-              args[[j]] <- NULL
-              break
-            }
-          }
-        }
-      }
 
       # prevent logger not named warning
       suppressWarnings(x[[i]] <- do.call(ctors[[i]]$new, args))
@@ -186,12 +243,7 @@ resolve_r6_ctors <- function(x){
     }
   }
 
-
-  if (is_scalar(x) && R6::is.R6(x[[1]])){
-    x[[1]]
-  } else {
-    x
-  }
+  x
 }
 
 

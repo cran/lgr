@@ -1,31 +1,39 @@
 context("simple_logging")
 
+setup({
+  lgr$add_appender(AppenderDt$new(), "memory")
+  get_logger("test")$config(NULL)
+})
+
+teardown({
+  basic_config()
+})
+
+
 
 
 test_that("simple_logging works as expected", {
-  expect_identical(threshold(), lgr::lgr$threshold)
-  expect_identical(console_threshold(), lgr::lgr$appenders$console$threshold)
+  expect_identical(threshold(), lgr$threshold)
+  expect_identical(console_threshold(), lgr$appenders$console$threshold)
 
-  yth <- lgr::lgr$threshold
-  cth <- lgr::lgr$appenders$console$threshold
+  yth <- lgr$threshold
+  cth <- lgr$appenders$console$threshold
+
+  on.exit({
+    lgr$set_threshold(yth)
+    lgr$appenders$console$set_threshold(cth)
+  })
 
   threshold(NA)
   console_threshold(NA)
 
-  expect_output(FATAL("test"), "FATAL")
-  expect_output(ERROR("test"), "ERROR")
-  expect_output(WARN("test"), "WARN")
-  expect_output(INFO("test"), "INFO")
-  expect_output(DEBUG("test"), "DEBUG")
-  expect_output(TRACE("test"), "TRACE")
+  expect_output(lgr$fatal("test"), "FATAL")
+  expect_output(lgr$trace("test"), "TRACE")
 
   expect_error(
     expect_output(log_exception(stop("oops")), "FATAL.*oops$"),
     "oops"
   )
-
-  lgr$set_threshold(yth)
-  lgr$appenders$console$set_threshold(cth)
 })
 
 
@@ -33,7 +41,7 @@ test_that("simple_logging works as expected", {
 
 test_that("show_log()", {
   expect_output(expect_true(is.data.frame(show_log())))
-  expect_output(expect_true(nrow(show_log()) > 5))
+  expect_output(expect_true(nrow(show_log()) > 2))
   expect_output(
     expect_identical(show_log(), show_log(target = lgr$appenders$memory))
   )
@@ -43,6 +51,7 @@ test_that("show_log()", {
   expect_error(show_log(target = lg), "has no Appender")
   expect_error(show_log(target = iris), "not a Logger or Appender")
 })
+
 
 
 
@@ -58,8 +67,10 @@ test_that("add/remove_appender", {
 
 
 
+
 test_that("option appenders setup", {
   old <- getOption("lgr.log_file")
+  on.exit(options("lgr.log_file" = old))
 
   options("lgr.log_file" = tempfile())
 
@@ -89,8 +100,4 @@ test_that("option appenders setup", {
   options("lgr.log_file" = c(blubb = tempfile('_fail')))
   expect_warning(res <- default_appenders(), "_fail")
   unlink(getOption("lgr.log_file"))
-
-  options("lgr.log_file" = old)
 })
-
-

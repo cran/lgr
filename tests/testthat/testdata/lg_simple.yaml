@@ -1,9 +1,9 @@
 Logger:
-  name: test/blubb
   threshold: info
   propagate: false
   appenders:
-    AppenderFile:
-      file: /tmp/testlog.txt
-      LayoutFormat:
+    AppenderConsole:
+      threshold: error
+      layout:
+        LayoutFormat:
           fmt: "%L %t - %m"

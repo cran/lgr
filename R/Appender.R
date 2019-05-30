@@ -1,15 +1,14 @@
 #' Appenders
 #'
 #' @description
-#' Appenders are assigned to [Loggers] and
-#' manage the output of the [LogEvents] to a destination, such as the console or
-#' a text file. An Appender must have a single [Layout] that tells it how to
-#' format the LogEvent. For details please refer to the documentations of the
-#' specific Appenders.
+#' Appenders are assigned to [Loggers] and manage the output of the [LogEvents]
+#' to a destination (such as the console or a text file). An Appender has a
+#' single [Layout] that tells it how to format the LogEvent. For details
+#' please refer to the documentations of the specific Appenders.
 #'
-#' **Appender is not designed for direct usage**, but it is the basis on which all
-#' other Appenders are built. Please see the **see also** section towards the
-#' end of this document a list of available Appenders.
+#' The Appender class itself **is not designed for direct usage**, but it is the
+#' basis on which all other Appenders are built. Please see the **see also**
+#' section towards the end of this document a list of available Appenders.
 #'
 #' @eval r6_usage(Appender)
 #'
@@ -83,7 +82,16 @@ Appender <- R6::R6Class(
     },
 
     set_layout = function(layout){
-      assert(inherits(layout, "Layout"))
+      if (is_scalar_list(layout)){
+        # set_layout also accepts a list of length 1 containing a single Layout
+        # object. This is a workaround for resolve_r6_ctors. This behaviour is
+        # intentionally not documented and you should not rely on it.
+        layout <- layout[[1]]
+      }
+      assert(
+        inherits(layout, "Layout"),
+        "`layout` must a `Layout` object, but is ", preview_object(layout)
+      )
       private$.layout <- layout
       invisible(self)
     }
@@ -131,15 +139,15 @@ Appender <- R6::R6Class(
 #' # create a new logger with propagate = FALSE to prevent routing to the root
 #' # logger. Please look at the section "Logger Hirarchies" in the package
 #' # vignette for more info.
-#' logger  <- Logger$new("testlogger", propagate = FALSE)
+#' lg  <- get_logger("test")$set_propagate(FALSE)
 #'
-#' logger$add_appender(AppenderConsole$new())
-#' logger$add_appender(AppenderConsole$new(
+#' lg$add_appender(AppenderConsole$new())
+#' lg$add_appender(AppenderConsole$new(
 #'   layout = LayoutFormat$new("[%t] %c(): [%n] %m", colors = getOption("lgr.colors"))))
 #'
 #' # Will output the message twice because we attached two console appenders
-#' logger$warn("A test message")
-#'
+#' lg$warn("A test message")
+#' lg$config(NULL) # reset config
 NULL
 
 
@@ -197,7 +205,7 @@ AppenderConsole <- R6::R6Class(
 #'
 #' \describe{
 #'   \item{`file`, `set_file(file)`}{`character` scalar. Path to the desired log
-#'   file. If the file does not exist it will be created}
+#'   file. If the file does not exist it will be created.}
 #'  }
 #'
 #'
@@ -207,26 +215,27 @@ AppenderConsole <- R6::R6Class(
 #' @name AppenderFile
 #'
 #' @examples
-#' logger <- Logger$new("loggername")
+#' lg <- get_logger("test")
 #' default <- tempfile()
 #' fancy <- tempfile()
 #' json <- tempfile()
 #'
-#' logger$add_appender(AppenderFile$new(default), "default")
-#' logger$add_appender(
+#' lg$add_appender(AppenderFile$new(default), "default")
+#' lg$add_appender(
 #'   AppenderFile$new(fancy, layout = LayoutFormat$new("[%t] %c(): %L %m")), "fancy"
 #' )
-#' logger$add_appender(
+#' lg$add_appender(
 #'   AppenderFile$new(json, layout = LayoutJson$new()), "json"
 #' )
 #'
-#' logger$info("A test message")
+#' lg$info("A test message")
 #'
 #' readLines(default)
 #' readLines(fancy)
 #' readLines(json)
 #'
 #' # cleanup
+#' lg$config(NULL)
 #' unlink(default)
 #' unlink(fancy)
 #' unlink(json)
@@ -263,9 +272,34 @@ AppenderFile <- R6::R6Class(
     },
 
     set_file = function(file){
-      assert(is_scalar_character(file))
+      assert(
+        is_scalar_character(file),
+        "`file` must be character scalar, not: ", preview_object(file)
+      )
+      assert(
+        dir.exists(dirname(file)),
+        "Cannot create file: directory '", dirname(file), "' does not exist."
+      )
       private$.file <- file
+      if (!file.exists(file))  file.create(file)
       invisible(self)
+    },
+
+    show = function(
+      threshold = NA_integer_,
+      n = 20L
+    ){
+      assert(is_scalar_integerish(n))
+      threshold <- standardize_threshold(threshold)
+
+      if (!is.na(threshold)){
+        sel <- self$data$level <= threshold
+      } else {
+        sel <- TRUE
+      }
+      dd <- tail(readLines(self$file)[sel], n)
+      cat(dd, sep = "\n")
+      invisible(dd)
     }
   ),
 
@@ -317,15 +351,18 @@ AppenderFile <- R6::R6Class(
 #' @seealso [LayoutFormat], [LayoutJson]
 #' @examples
 #' tf <- tempfile()
-#' l <- Logger$new("testlogger", appenders = AppenderJson$new(tf), propagate = FALSE)
+#' lg <- get_logger("test")$
+#'   set_appenders(AppenderJson$new(tf))$
+#'   set_propagate(FALSE)
 #'
-#' l$info("A test message")
-#' l$info("A test message %s strings", "with format strings", and = "custom_fields")
+#' lg$info("A test message")
+#' lg$info("A test message %s strings", "with format strings", and = "custom_fields")
 #'
-#' l$appenders[[1]]$show()
-#' l$appenders[[1]]$data
+#' lg$appenders[[1]]$show()
+#' lg$appenders[[1]]$data
 #'
 #' # cleanup
+#' lg$config(NULL)
 #' unlink(tf)
 NULL
 
@@ -348,25 +385,10 @@ AppenderJson <- R6::R6Class(
       self$set_threshold(threshold)
       self$set_layout(layout)
       self$set_filters(filters)
-    },
-
-    show = function(
-      threshold = NA_integer_,
-      n = 20L
-    ){
-      assert(is_scalar_integerish(n))
-      threshold <- standardize_threshold(threshold)
-
-      if (!is.na(threshold)){
-        sel <- self$data$level <= threshold
-      } else {
-        sel <- TRUE
-      }
-      dd <- tail(readLines(self$file)[sel], n)
-      cat(dd, sep = "\n")
-      invisible(dd)
     }
   ),
+
+
   active = list(
     data = function(){
       read_json_lines(self$file)
@@ -526,12 +548,12 @@ AppenderTable <- R6::R6Class(
 #' @name AppenderDt
 #'
 #' @examples
-#' lg <- Logger$new(
-#'   "test",
-#'   appenders = list(memory = AppenderDt$new()),
+#' lg <- get_logger("test")
+#' lg$config(list(
+#'   appenders = list(memory = AppenderBuffer$new()),
 #'   threshold = NA,
 #'   propagate = FALSE  # to prevent routing to root logger for this example
-#' )
+#' ))
 #' lg$debug("test")
 #' lg$error("test")
 #'
@@ -548,7 +570,7 @@ AppenderTable <- R6::R6Class(
 #' lg$info("the iris data frame", caps = LETTERS[1:5])
 #' lg$appenders$memory$data
 #' lg$appenders$memory$data$.custom[[3]]$caps
-#'
+#' lg$config(NULL)
 NULL
 
 
@@ -631,59 +653,59 @@ AppenderDt <- R6::R6Class(
       # AppenderDt is designed for minimum overhead, so it does not use a
       # Layout for transforming the log event into a tabular structure but
       # rather the process is hardcoded
-        dt <- get(".data", private)
-        datanames <- names(dt)
-        valnames  <- setdiff(datanames, ".id")
+      dt <- get(".data", private)
+      datanames <- names(dt)
+      valnames  <- setdiff(datanames, ".id")
 
       # Select and prepare event values to be inserted into data
-        vals <- event[["values"]]
+      vals <- event[["values"]]
 
-        # handle .custom
-        if (".custom" %in% datanames){
-          vals[[".custom"]] <- vals[!names(vals) %in% valnames]
-        }
+      # handle .custom
+      if (".custom" %in% datanames){
+        vals[[".custom"]] <- vals[!names(vals) %in% valnames]
+      }
 
-        vals <- vals[valnames]
-        names(vals) <- valnames
+      vals <- vals[valnames]
+      names(vals) <- valnames
 
 
-        # handle list-columns
-        vals[vapply(vals, is.null, FALSE)] <- list(NULL)
-        list_cols <- get("list_cols", private)
-        vals[list_cols] <- lapply(vals[list_cols], list)
+      # handle list-columns
+      vals[vapply(vals, is.null, FALSE)] <- list(NULL)
+      list_cols <- get("list_cols", private)
+      vals[list_cols] <- lapply(vals[list_cols], list)
 
       # Prepare values for vectorized insert (if necessary)
-        lengths <- vapply(vals, length, 1L, USE.NAMES = FALSE)
-        lenmax  <- max(lengths)
-        assert(all(lengths %in% c(1, lenmax)))
+      lengths <- vapply(vals, length, 1L, USE.NAMES = FALSE)
+      lenmax  <- max(lengths)
+      assert(all(lengths %in% c(1, lenmax)))
 
-        # take special care if vectorized insert is bigger than buffer size
-        if (lenmax > nrow(dt)){
-          vals <- lapply(vals, trim_to_buffer_size, nrow(dt))
-          private[["id"]] <- get("id", envir = private) + lenmax - nrow(private$.data)
-          lenmax <- nrow(dt)
-        }
-        i   <- seq_len(lenmax)
+      # take special care if vectorized insert is bigger than buffer size
+      if (lenmax > nrow(dt)){
+        vals <- lapply(vals, trim_to_buffer_size, nrow(dt))
+        private[["id"]] <- get("id", envir = private) + lenmax - nrow(private$.data)
+        lenmax <- nrow(dt)
+      }
+      i   <- seq_len(lenmax)
 
       # generate new ids
-        ids <- i + get("id", private)
+      ids <- i + get("id", private)
 
       # check if rotation is necessary
-        if (get("current_row", private) + lenmax <= nrow(dt)){
-          i   <- i + get("current_row", envir = private)
-          private[["current_row"]] <- get("current_row", envir = private) + lenmax
-        } else {
-          # rotate buffer
-          assign("current_row", lenmax, envir = private)
-        }
+      if (get("current_row", private) + lenmax <= nrow(dt)){
+        i   <- i + get("current_row", envir = private)
+        private[["current_row"]] <- get("current_row", envir = private) + lenmax
+      } else {
+        # rotate buffer
+        assign("current_row", lenmax, envir = private)
+      }
 
       # Perform the insert
-        data.table::set(
-          dt,
-          i,
-          j = c(".id", names(vals)),
-          value = c(list(ids), vals)
-        )
+      data.table::set(
+        dt,
+        i,
+        j = c(".id", names(vals)),
+        value = c(list(ids), vals)
+      )
 
       private[["id"]] <- get("id", envir = private) + lenmax
     },
@@ -852,7 +874,7 @@ AppenderMemory <- R6::R6Class(
         }
       }
 
-    NULL
+      NULL
     },
 
     flush = function(){},
@@ -1226,8 +1248,8 @@ AppenderBuffer <- R6::R6Class(
 #' whenever a LogEvent with a level of `fatal` or `error` is encountered
 #' (`flush_threshold`) or when the Appender is garbage collected
 #' (`flush_on_exit`), i.e. when you close the \R session or shortly after you
-#' remove the Appender object via `rm()` or the likes. If you want to avoid
-#' this behaviour, just set `buffer_size` to `0`.
+#' remove the Appender object via `rm()`. If you want to disable buffering, just
+#' set `buffer_size` to `0`.
 #'
 #' @eval r6_usage(AppenderDbi)
 #'
@@ -1263,12 +1285,11 @@ AppenderBuffer <- R6::R6Class(
 #' column types and further restrictions. On top of that implementation details
 #' vary between database backends.
 #'
-#' To make setting up `AppenderDbi` as painless as possible, the helper
-#' function [select_dbi_layout()] tries to automatically determine sensible
-#' [LayoutDbi] settings based on `conn` and - if it exists in the database
-#' already - `table`. If `table` does not
-#' exist in the database and you start logging, a new table will be created
-#' with the `col_types` from `layout`.
+#' To make setting up `AppenderDbi` as painless as possible, the helper function
+#' [select_dbi_layout()] tries to automatically determine sensible [LayoutDbi]
+#' settings based on `conn` and - if it exists in the database already -
+#' `table`. If `table` does not exist in the database and you start logging, a
+#' new table will be created with the `col_types` from `layout`.
 #'
 #' @export
 #' @family Appenders
@@ -1315,19 +1336,25 @@ AppenderDbi <- R6::R6Class(
 
       # database
       self$set_conn(conn)
-      private[[".table"]] <- table
+      private$set_table(table)
       self$set_close_on_exit(close_on_exit)
 
-      if (DBI::dbExistsTable(self$conn, table)){
+
+      if (DBI::dbExistsTable(self$conn, layout$format_table_name(self$table))){
         # do nothing
       } else if (is.null(self$layout$col_types)) {
         message(paste0("Creating '", fmt_tname(table), "' on first log. "))
 
       } else {
         message("Creating '", fmt_tname(table), "' with manually specified column types")
-        DBI::dbExecute(conn, layout$sql_create_table(table))
+        DBI::dbCreateTable(
+          self$conn,
+          layout$format_table_name(self$table),
+          fields = layout$col_types
+        )
       }
     },
+
 
     set_close_on_exit = function(x){
       assert(is_scalar_bool(x))
@@ -1335,11 +1362,26 @@ AppenderDbi <- R6::R6Class(
       invisible(self)
     },
 
+
     set_conn = function(conn){
       assert(inherits(conn, "DBIConnection"))
+
+      if (inherits(conn, "MySQLConnection")){
+        stop(
+          "'RMySQL' is not supported by lgr. Please use the newer 'RMariaDB'",
+          "package to connect to MySQL and MariaDB databases instead."
+        )
+      } else if (inherits(conn, "PostgreSQLConnection")){
+        stop(
+          "'PostgreSQL' is not supported by lgr. Please use the newer
+          'Rpostgres' package to connect to Postgres databases instead."
+        )
+      }
+
       private$.conn <- conn
       invisible(self)
     },
+
 
     show = function(
       threshold = NA_integer_,
@@ -1367,6 +1409,7 @@ AppenderDbi <- R6::R6Class(
       invisible(dd)
     },
 
+
     flush = function(){
       lo <- get(".layout", envir = private)
 
@@ -1375,10 +1418,12 @@ AppenderDbi <- R6::R6Class(
 
       if (length(buffer)){
         dd <- lo[["format_data"]](buffer)
-        cn <- names(get("col_types", envir = self))
+        cn <- names(get("col_types", envir = lo))
 
-        if (!is.null(cn))
-          dd <- dd[, intersect(cn, names(dd))]
+        if (!is.null(cn)){
+          sel <- which(toupper(names(dd)) %in% toupper(cn))
+          dd <- dd[, sel, with = FALSE]
+        }
 
         DBI::dbWriteTable(
           conn  = get(".conn", envir = private),
@@ -1398,14 +1443,20 @@ AppenderDbi <- R6::R6Class(
 
   # +- active ---------------------------------------------------------------
   active = list(
-    destination = function() private$.table,
+    destination = function(){
+      fmt_tname(self$table)
+    },
+
+
     conn = function(){
       private$.conn
     },
 
+
     close_on_exit = function(){
       private$.close_on_exit
     },
+
 
     col_types = function(){
       if (is.null(get(".col_types", envir = private))){
@@ -1419,9 +1470,34 @@ AppenderDbi <- R6::R6Class(
       }
     },
 
+
     table = function(){
-      self[["layout"]][["format_table_name"]](get(".table", envir = private))
+      self$layout$format_table_name(get(".table", envir = private))
     },
+
+
+    table_name = function(){
+      as_tname(get("table", envir = self))
+    },
+
+
+    table_id = function(){
+
+      table <- self$table
+      table <- unlist(strsplit(table, ".", fixed = TRUE))
+
+      if (identical(length(table), 1L)){
+        table <- DBI::Id(table = table)
+      } else if (identical(length(table), 2L)) {
+        table <- DBI::Id(schema = table[[1]], table = table[[2]])
+
+      } else {
+        stop(
+          "`table` must either be DBI::Id object or a character scalar of ",
+          "the form <schema>.<table>")
+      }
+    },
+
 
     data = function(){
       tbl <- get("table", envir = self)
@@ -1433,7 +1509,10 @@ AppenderDbi <- R6::R6Class(
       }
 
       names(dd) <- tolower(names(dd))
-      dd[["timestamp"]] <- as.POSIXct(dd[["timestamp"]])
+      if (nrow(dd) > 0){
+        dd[["timestamp"]] <- as.POSIXct(dd[["timestamp"]])
+      }
+
       dd[["level"]] <- as.integer(dd[["level"]])
       dd
     }
@@ -1450,6 +1529,7 @@ AppenderDbi <- R6::R6Class(
       }
     },
 
+
     set_col_types = function(x){
       if (!is.null(x)){
         assert(is.character(x))
@@ -1457,6 +1537,19 @@ AppenderDbi <- R6::R6Class(
       }
       private$.col_types <- x
       invisible(self)
+    },
+
+
+    set_table = function(table){
+      if (inherits(table, "Id")){
+        assert("table" %in% names(table@name))
+
+      } else {
+        assert(is_scalar_character(table))
+      }
+
+      private[[".table"]] <- table
+      self
     },
 
     .col_types = NULL,
@@ -1537,17 +1630,21 @@ AppenderRjdbc <- R6::R6Class(
       self$set_flush_on_rotate(flush_on_rotate)
 
       # database
-      private[[".conn"]]  <- conn
-      private[[".table"]] <- table
+      self$set_conn(conn)
+      private$set_table(table)
       self$set_close_on_exit(close_on_exit)
 
-      table_exists <- try(DBI::dbGetQuery(conn, paste("SELECT 1 FROM", table)), silent = TRUE)
-      table_exists <- !inherits(table_exists, "try-error")
+      table_exists <- tryCatch(
+        is.data.frame(DBI::dbGetQuery(conn, paste("SELECT 1 FROM", self$table))),
+        error = function(e) FALSE
+      )
 
       if (!table_exists) {
-        message("Creating '", fmt_tname(table), "' with manually specified column types")
-        RJDBC::dbSendUpdate(conn, layout$sql_create_table(toupper(table)))
+        message("Creating '", fmt_tname(self$table), "' with manually specified column types")
+        RJDBC::dbSendUpdate(conn, layout$sql_create_table(self$table))
       }
+
+      self
     },
 
 
@@ -1568,7 +1665,7 @@ AppenderRjdbc <- R6::R6Class(
           data <- as.list(dd[i, ])
           q <-  sprintf(
             "INSERT INTO %s (%s) VALUES (%s)",
-            private$.table,
+            get("table", self),
             paste(names(data), collapse = ", "),
             paste(rep("?", length(data)), collapse = ", ")
           )
@@ -1584,6 +1681,7 @@ AppenderRjdbc <- R6::R6Class(
 
 
   active = list(
+
     data = function(){
       dd <- try(DBI::dbGetQuery(self$conn, paste("SELECT * FROM", self$table)))
 
@@ -1647,28 +1745,28 @@ NULL
 
 
 AppenderDigest <-  R6::R6Class(
-    "AppenderDigest",
-    inherit = AppenderMemory,
-    cloneable = FALSE,
+  "AppenderDigest",
+  inherit = AppenderMemory,
+  cloneable = FALSE,
 
-    # +- public --------------------------------------------------------------
-    public = list(
+  # +- public --------------------------------------------------------------
+  public = list(
 
-      set_subject_layout = function(layout){
-        assert(inherits(layout, "Layout"))
-        private$.subject_layout <- layout
-        invisible(self)
-      }
-    ),
+    set_subject_layout = function(layout){
+      assert(inherits(layout, "Layout"))
+      private$.subject_layout <- layout
+      invisible(self)
+    }
+  ),
 
-    active = list(
-      subject_layout = function() get(".subject_layout", private)
-    ),
+  active = list(
+    subject_layout = function() get(".subject_layout", private)
+  ),
 
-    private = list(
-      .subject_layout = NULL
-    )
+  private = list(
+    .subject_layout = NULL
   )
+)
 
 
 
@@ -2212,6 +2310,372 @@ AppenderGmail <- R6::R6Class(
 
 
 
+# AppenderFileRotating ----------------------------------------------------
+
+#' Log to a rotating file
+#'
+#' An extension of [AppenderFile] that rotates logfiles based on certain
+#' conditions. Please refer to the documentation of [rotor::rotate()] for
+#' the meanings of the extra arguments
+#'
+#' @eval r6_usage(list(
+#'   AppenderFileRotating,
+#'   AppenderFileRotatingDate,
+#'   AppenderFileRotatingTime
+#' ))
+#'
+#' @inheritSection AppenderFile Creating a New Appender
+#' @inheritSection AppenderFile Fields
+#' @inheritSection AppenderFile Methods
+#'
+#' @section Fields:
+#'
+#' \describe{
+#'   \item{`age`, `size`, `max_backups`, `fmt`, `overwrite`, `compression`, `backup_dir`}{
+#'     Please see [rotor::rotate()] for the meaning of these arguments
+#'     (`fmt` is passed on as `format`).
+#'   }
+#'
+#'   \item{`cache_backups`, `set_cache_backups(x)`}{
+#'     `TRUE` or `FALSE`. If `TRUE` (the default) the list of backups is cached,
+#'     if `FALSE` it is read from disk every time this appender triggers.
+#'     Caching brings a significant speedup for checking whether to rotate or
+#'     not based on the `age` of the last backup, but is only safe if
+#'     there are no other programs/functions (except this appender) interacting
+#'     with the backups.
+#'   }
+#'
+#'   \item{`backups`}{A `data.frame` containing information on path, file size,
+#'     etc... on the available backups of `file`.}
+#'  }
+#'
+#'
+#' @export
+#' @seealso [LayoutFormat], [LayoutJson], [rotor::rotate()]
+#' @family Appenders
+#' @name AppenderFileRotating
+#' @aliases AppenderFileRotatingDate AppenderFileRotatingTime
+NULL
+
+
+
+
+#' @export
+AppenderFileRotating <- R6::R6Class(
+  "AppenderFileRotating",
+  inherit = AppenderFile,
+  public = list(
+    initialize = function(
+      file,
+      threshold = NA_integer_,
+      layout = LayoutFormat$new(),
+      filters = NULL,
+
+      size = Inf,
+      max_backups = Inf,
+      compression = FALSE,
+      backup_dir = dirname(file),
+      create_file = TRUE
+    ){
+      assert_namespace("rotor")
+
+      if (!file.exists(file))  file.create(file)
+
+      private$bq <- rotor::BackupQueueIndex$new(
+        file,
+        backup_dir = backup_dir
+      )
+
+      self$set_file(file)
+      self$set_threshold(threshold)
+      self$set_layout(layout)
+      self$set_filters(filters)
+
+      self$set_size(size)
+      self$set_max_backups(max_backups)
+      self$set_compression(compression)
+      self$set_backup_dir(backup_dir)
+      self$set_create_file(create_file)
+
+      self
+    },
+
+    append = function(event){
+      super$append(event)
+      self$rotate()
+    },
+
+    rotate = function(
+      force   = FALSE
+    ){
+      assert(is_scalar_bool(force))
+
+      bq <- get("bq", private)
+
+      if (force || bq$should_rotate(size = self$size)){
+        bq$push_backup()
+        bq$prune()
+        file.remove(self$file)
+        file.create(self$file)
+      }
+
+      self
+    },
+
+    prune = function(max_backups = self$max_backups){
+      get("bq", envir = private)$prune(max_backups)
+      self
+    },
+
+    set_file = function(
+      file
+    ){
+      super$set_file(file)
+      private$bq$set_file(self$file)
+      self
+    },
+
+    set_size = function(
+      x
+    ){
+      private[[".size"]] <- x
+      self
+    },
+
+    set_max_backups = function(
+      x
+    ){
+      private[["bq"]]$set_max_backups(x)
+      self
+    },
+
+    set_compression = function(
+      x
+    ){
+      private[["bq"]]$set_compression(x)
+      self
+    },
+
+    set_create_file = function(
+      x
+    ){
+      assert(is_scalar_bool(x))
+      private[[".create_file"]] <- x
+      self
+    },
+
+    set_backup_dir = function(
+      x
+    ){
+      private$bq$set_backup_dir(x)
+      self
+    }
+  ),
+
+  active = list(
+    size = function() get(".size", private),
+    create_file = function() get(".create_file", private),
+
+    compression = function() get("bq", private)$compression,
+    max_backups = function() get("bq", private)$max_backups,
+    backups     = function() get("bq", private)$backups,
+    backup_dir  = function() get("bq", private)$backup_dir
+  ),
+
+  private = list(
+    .size = NULL,
+    .create_file = NULL,
+    bq = NULL
+  )
+)
+
+
+# AppenderFileRotatingTime ------------------------------------------------
+
+#' @export
+AppenderFileRotatingTime <- R6::R6Class(
+  "AppenderFileRotating",
+  inherit = AppenderFileRotating,
+  public = list(
+    initialize = function(
+      file,
+      threshold = NA_integer_,
+      layout = LayoutFormat$new(),
+      filters = NULL,
+
+      age  = Inf,
+      size = -1,
+      max_backups = Inf,
+      compression = FALSE,
+      backup_dir = dirname(file),
+      fmt = "%Y-%m-%d--%H-%M-%S",
+      overwrite = FALSE,
+      create_file = TRUE,
+      cache_backups = TRUE
+    ){
+      assert_namespace("rotor")
+
+      if (!file.exists(file))  file.create(file)
+
+      private$bq <- rotor::BackupQueueDateTime$new(
+        file,
+        backup_dir = backup_dir
+      )
+
+      self$set_file(file)
+      self$set_threshold(threshold)
+      self$set_layout(layout)
+      self$set_filters(filters)
+
+      self$set_fmt(fmt)
+      self$set_age(age)
+      self$set_size(size)
+      self$set_max_backups(max_backups)
+      self$set_compression(compression)
+      self$set_overwrite(overwrite)
+      self$set_backup_dir(backup_dir)
+      self$set_create_file(create_file)
+      self$set_cache_backups(cache_backups)
+
+      self
+    },
+
+
+    rotate = function(
+      force = FALSE,
+      now   = Sys.time()
+    ){
+      assert(is_scalar_bool(force))
+      bq <- get("bq", private)
+
+      if (
+        force ||
+        bq$should_rotate(
+          size = self$size,
+          age = self$age,
+          now = now
+        )
+      ){
+        bq$push_backup(
+          overwrite = self$overwrite,
+          now = now
+        )
+        bq$prune()
+        file.remove(self$file)
+        file.create(self$file)
+      }
+
+      self
+    },
+
+
+    set_age = function(
+      x
+    ){
+      private[[".age"]] <- x
+      self
+    },
+
+
+    set_fmt = function(
+      x
+    ){
+      get("bq", private)$set_fmt(x)
+      self
+    },
+
+
+    set_overwrite = function(
+      x
+    ){
+      assert(is_scalar_bool(x))
+      private[[".overwrite"]] <- x
+      self
+    },
+
+
+    set_cache_backups = function(
+      x
+    ){
+      private$bq$set_cache_backups(x)
+      self
+    }
+  ),
+
+
+  active = list(
+    age = function() get(".age", private),
+    overwrite = function() get(".overwrite", private),
+    fmt = function() get("bq", private)$fmt,
+    cache_backups = function() get("bq", private)$cache_backups
+  ),
+
+
+  private = list(
+    .age = NULL,
+    .overwrite = NULL
+  )
+)
+
+
+
+# AppenderFileRotatingDate ----------------------------------------------------
+#' @export
+AppenderFileRotatingDate <- R6::R6Class(
+  "AppenderFileRotatingDate",
+  inherit = AppenderFileRotatingTime,
+  public = list(
+    initialize = function(
+      file,
+      threshold = NA_integer_,
+      layout = LayoutFormat$new(),
+      filters = NULL,
+
+      age  = Inf,
+      size = -1,
+      max_backups = Inf,
+      compression = FALSE,
+      backup_dir = dirname(file),
+      fmt = "%Y-%m-%d",
+      overwrite = FALSE,
+      create_file = TRUE,
+      cache_backups = TRUE
+    ){
+      assert_namespace("rotor")
+
+      if (!file.exists(file))  file.create(file)
+
+      private$bq <- rotor::BackupQueueDate$new(
+        file,
+        backup_dir = backup_dir
+      )
+
+      self$set_file(file)
+      self$set_threshold(threshold)
+      self$set_layout(layout)
+      self$set_filters(filters)
+
+      self$set_fmt(fmt)
+      self$set_age(age)
+      self$set_size(size)
+      self$set_max_backups(max_backups)
+      self$set_compression(compression)
+      self$set_overwrite(overwrite)
+      self$set_create_file(create_file)
+      self$set_backup_dir(backup_dir)
+      self$set_cache_backups(cache_backups)
+
+      self
+    }
+  )
+)
+
+
+
+
+
+
+
 # utils -------------------------------------------------------------------
 
 # trim multi-valued events from vectorized inserts to the buffer size
@@ -2231,4 +2695,31 @@ fmt_tname <- function(x){
   } else {
     x
   }
+}
+
+
+
+
+as_tname <- function(x){
+  if (is_scalar_character(x)){
+    return(x)
+
+  } else if (is_Id(x)){
+    x <- x@name
+
+    if (identical(length(x), 1L)){
+      assert(identical(names(x), "table"))
+      x <- x[["table"]]
+
+    } else if (identical(length(x), 2L)){
+      assert(setequal(names(x), c("schema", "table")))
+      x <- paste0(x[["schema"]], ".", x[["table"]])
+
+    } else {
+
+      stop("Table identifiers must contain a table and may contain a schema")
+    }
+  }
+
+  x
 }

@@ -13,20 +13,21 @@ comfortably access the underlying file.
 x <- AppenderFile$new(file, threshold = NA_integer_, layout =
   LayoutFormat$new(), filters = NULL)
 
-x$append(event)
-x$set_file(file)
-x$set_threshold(level)
-x$set_layout(layout)
-x$filter(event)
 x$add_filter(filter, name = NULL)
+x$append(event)
+x$filter(event)
 x$remove_filter(pos)
+x$set_file(file)
 x$set_filters(filters)
+x$set_layout(layout)
+x$set_threshold(level)
+x$show(threshold = NA_integer_, n = 20L)
 
 x$destination
 x$file
+x$filters
 x$layout
 x$threshold
-x$filters
 
 }
 }
@@ -49,7 +50,7 @@ form of \code{appender$set_<fieldname>(value)}
 
 \describe{
 \item{\code{file}, \code{set_file(file)}}{\code{character} scalar. Path to the desired log
-file. If the file does not exist it will be created}
+file. If the file does not exist it will be created.}
 }
 
 
@@ -141,15 +142,18 @@ was specified)
 
 \examples{
 tf <- tempfile()
-l <- Logger$new("testlogger", appenders = AppenderJson$new(tf), propagate = FALSE)
+lg <- get_logger("test")$
+  set_appenders(AppenderJson$new(tf))$
+  set_propagate(FALSE)
 
-l$info("A test message")
-l$info("A test message \%s strings", "with format strings", and = "custom_fields")
+lg$info("A test message")
+lg$info("A test message \%s strings", "with format strings", and = "custom_fields")
 
-l$appenders[[1]]$show()
-l$appenders[[1]]$data
+lg$appenders[[1]]$show()
+lg$appenders[[1]]$data
 
 # cleanup
+lg$config(NULL)
 unlink(tf)
 }
 \seealso{
@@ -157,6 +161,7 @@ unlink(tf)
 
 Other Appenders: \code{\link{AppenderBuffer}},
   \code{\link{AppenderConsole}}, \code{\link{AppenderDbi}},
+  \code{\link{AppenderFileRotating}},
   \code{\link{AppenderFile}}, \code{\link{AppenderGmail}},
   \code{\link{AppenderPushbullet}},
   \code{\link{AppenderRjdbc}},

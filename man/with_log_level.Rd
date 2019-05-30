@@ -14,7 +14,8 @@ with_log_value(values, code, logger = lgr::lgr)
 
 \item{code}{Any \R code}
 
-\item{logger}{a \link{Logger}. defaults to the root logger (lgr::lgr).}
+\item{logger}{a \link{Logger} or the name of one (see \code{\link[=get_logger]{get_logger()}}). Defaults
+to the root logger (\code{lgr::lgr}).}
 
 \item{values}{a named \code{list} of values to be injected into the logging calls}
 }
@@ -33,12 +34,11 @@ produce hard to reason about code.
 \examples{
 with_log_level("warn", {
   lgr$info("More important than it seems")
-  FATAL("Really not so bad")
+  lgr$fatal("Really not so bad")
 })
-
 with_log_value(
   list(msg = "overriden msg"),  {
   lgr$info("bar")
-  INFO("FOO")
+  lgr$fatal("FOO")
 })
 }

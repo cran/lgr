@@ -20,8 +20,8 @@ whenever the buffer is full (\code{buffer_size}, default is 10 LogEvents),
 whenever a LogEvent with a level of \code{fatal} or \code{error} is encountered
 (\code{flush_threshold}) or when the Appender is garbage collected
 (\code{flush_on_exit}), i.e. when you close the \R session or shortly after you
-remove the Appender object via \code{rm()} or the likes. If you want to avoid
-this behaviour, just set \code{buffer_size} to \code{0}.
+remove the Appender object via \code{rm()}. If you want to disable buffering, just
+set \code{buffer_size} to \code{0}.
 }
 
 \section{Usage}{
@@ -31,41 +31,43 @@ x <- AppenderDbi$new(conn, table, threshold = NA_integer_, layout =
   flush_threshold = "error", flush_on_exit = TRUE, flush_on_rotate = TRUE,
   should_flush = default_should_flush, filters = NULL)
 
+x$add_filter(filter, name = NULL)
+x$append(event)
+x$filter(event)
+x$flush()
+x$remove_filter(pos)
+x$set_buffer_size(x)
 x$set_close_on_exit(x)
 x$set_conn(conn)
-x$show(threshold = NA_integer_, n = 20)
-x$flush()
-x$append(event)
-x$set_buffer_size(x)
-x$set_should_flush(x)
+x$set_filters(filters)
 x$set_flush_on_exit(x)
 x$set_flush_on_rotate(x)
 x$set_flush_threshold(level)
-x$show(threshold = NA_integer_, n = 20L)
-x$set_threshold(level)
 x$set_layout(layout)
-x$filter(event)
-x$add_filter(filter, name = NULL)
-x$remove_filter(pos)
-x$set_filters(filters)
+x$set_should_flush(x)
+x$set_threshold(level)
+x$show(threshold = NA_integer_, n = 20)
+x$show(threshold = NA_integer_, n = 20L)
 
+x$buffer_df
+x$buffer_dt
+x$buffer_events
+x$buffer_size
 x$close_on_exit
 x$col_types
 x$conn
 x$data
 x$destination
-x$table
-x$buffer_df
-x$buffer_dt
-x$buffer_events
-x$buffer_size
+x$filters
 x$flush_on_exit
 x$flush_on_rotate
 x$flush_threshold
-x$should_flush
 x$layout
+x$should_flush
+x$table
+x$table_id
+x$table_name
 x$threshold
-x$filters
 
 }
 }
@@ -171,12 +173,11 @@ Layouts for relational database tables are tricky as they have very strict
 column types and further restrictions. On top of that implementation details
 vary between database backends.
 
-To make setting up \code{AppenderDbi} as painless as possible, the helper
-function \code{\link[=select_dbi_layout]{select_dbi_layout()}} tries to automatically determine sensible
-\link{LayoutDbi} settings based on \code{conn} and - if it exists in the database
-already - \code{table}. If \code{table} does not
-exist in the database and you start logging, a new table will be created
-with the \code{col_types} from \code{layout}.
+To make setting up \code{AppenderDbi} as painless as possible, the helper function
+\code{\link[=select_dbi_layout]{select_dbi_layout()}} tries to automatically determine sensible \link{LayoutDbi}
+settings based on \code{conn} and - if it exists in the database already -
+\code{table}. If \code{table} does not exist in the database and you start logging, a
+new table will be created with the \code{col_types} from \code{layout}.
 }
 
 \section{Methods}{
@@ -217,6 +218,7 @@ was specified)
 \seealso{
 Other Appenders: \code{\link{AppenderBuffer}},
   \code{\link{AppenderConsole}},
+  \code{\link{AppenderFileRotating}},
   \code{\link{AppenderFile}}, \code{\link{AppenderGmail}},
   \code{\link{AppenderJson}},
   \code{\link{AppenderPushbullet}},

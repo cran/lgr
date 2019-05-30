@@ -28,12 +28,10 @@ knitr::opts_chunk$set(
 lgr is a logging framework for R inspired by 
 [Apache Log4j](https://logging.apache.org/log4j/2.x/) and
 [Python logging](https://docs.python.org/3/library/logging.html).
-It follows a traditional object oriented design implemented through
+It follows an object oriented design implemented through
 [R6 classes](https://github.com/r-lib/R6). This enables lgr to have a larger
-set of features than other logging packages for R, and makes it easy to extend 
-for people that have experience with R6 classes. This also makes Logger 
-configuration a bit more verbose than for other packages, but I hope
-also more flexible and transparent. 
+set of features than other logging packages for R, and makes it flexible and 
+easy to extend.  
 
 If you are not sure if lgr is the right package for you, take a look 
 [examples](#examples) to see what lgr can do for you.
@@ -48,7 +46,7 @@ it. If you are a package developer you can (and should) set up a new Logger for
 your package, but more on that later. For many use cases the root Logger will 
 suffice.
 
-### Logging to the Console
+### Logging to the console
 ```{r}
 # the root logger is called "lgr"
 lgr$info("Vampire stories are generally located in Styria.")
@@ -59,7 +57,8 @@ You can use formatting strings that are passed on to `sprintf()` in lgr.
 lgr$error("Vampires generally arrive in carriages drawn by %i black horses.", 2)
 ```
 
-### Logging to Plain Files
+
+### Logging to plaintext files
 
 Usually you don't (only) want to log to the console, you want to log to files.
 Output of Loggers is managed by Appenders. The root Logger is preconfigured
@@ -85,7 +84,11 @@ Formatting is handled by **Layouts**, and each Appender has exactly one:
 lgr$appenders$file$set_layout(LayoutFormat$new(timestamp_fmt = "%B %d %T"))
 lgr$info("No, I am quite serious")
 readLines(tf)
+
+#cleanup
+unlink(tf)
 ```
+
 
 ### Logging to JSON files
 
@@ -101,6 +104,7 @@ lgr$remove_appender("file")
 lgr$add_appender(AppenderJson$new(tf), name = "json")
 lgr$info("We lived in Styria")
 ```
+
 JSON is still somewhat human readable
 ```{r}
 cat(readLines(tf))
@@ -113,46 +117,10 @@ read_json_lines(tf)
 
 
 
-### Logger configuration with `$config()`
-
-The `$config()` method provides a flexible alternative to configuring loggers
-with their `$set_*()` methods.
-
-```{r eval = FALSE}
-
-# explicit setup with logger_config
-lgr$config(logger_config(
-  threshold = "info",
-  appenders = AppenderFile$new(
-    file = "path/to/logfile",
-    layout = LayoutFormat(fmt = "[%L] %m")
-  )
-))
-```
-
-You can also specify Logger configurations in yaml files
-
-```{r}
-#### contents of path/to/config.yaml #####
-# Logger:
-#   name: test/blubb
-#   threshold: info
-#   appenders:
-#     AppenderFile:
-#       file: /path/to/logfile
-#       LayoutFormat: 
-#          fmt: '[%L] %m'
-```
-
-```{r eval = FALSE}
-lgr$config("path/to/config.yaml")
-```
-
-
 
 ### Custom Fields
 
-Unlike many others Loggers for R, lgr treats a log *event* as a unit of data,
+Unlike many others Loggers for R, lgr treats a  *LogEvent* as a unit of data,
 not just a message with a timestamp. A log event can contain arbitrary data,
 though not all Appenders can handle that well. The JSON appender we added
 above is particularly good at handling most R objects.
@@ -184,7 +152,7 @@ for that.
 
 # Usage
 
-## Structure of the Logging System
+## Structure of the logging system
 
 If you want custom logging configurations, you have to understand the structure
 of the logging process.
@@ -210,7 +178,7 @@ of the logging process.
   a quite natural manner. See [examples 1 & 2](#examples)
 
 
-### On R6 Classes
+### On R6 classes
 
 The elements described above are R6 classes. R6 is an object orientation
 system for R that is used by many popular packages such as shiny, dplyr, 
@@ -234,7 +202,7 @@ always with `get_logger()`.
 
 
 
-## Log Levels
+## Log levels
 
 lgr supports the standard log4j Log Levels outlined bellow. The Log Level of
 an event represents its severity. The named log levels are really just 
@@ -269,14 +237,14 @@ standard log levels and you have to use `lgr$log(level, message)` to create
 a LogEvent with a custom log level.
 
 
-## Logging With the Root Logger
+## Logging with the Root Logger
 
 lgr comes with a pre-configured root Logger. It is called *root* because
 you can [set up a tree of Loggers](#hierarchy) that descent from it, but for 
 basic use you will not have to worry about that.
 
 
-### Logging Syntax
+### Logging syntax
 
 lgr Loggers are R6 objects with *methods* (functions) for logging. You can refer 
 to the *root* logger with `lgr`. 
@@ -284,13 +252,12 @@ to the *root* logger with `lgr`.
 ```{r}
 lgr$fatal("This is an important message about %s going wrong", "->something<-")
 lgr$trace("Trace messages are still hidden")
-lgr$appenders$console$set_threshold("trace")
+lgr$set_threshold("trace")
 lgr$trace("Unless we lower the threshold")
-lgr$appenders$memory$show(3)
 
 ```
 
-### Formatting Strings 
+### Formatting strings 
 
 You can use `sprintf()` style formatting strings directly in log messages. 
 ```{r}
@@ -298,7 +265,7 @@ lgr$info("The sky was the color of %s, tuned to a dead chanel", "television")
 ```
 
 
-## Log Events: The Atomic Unit of Logging
+## LogEvents: The atomic unit of logging
 
 LogEvents are objects that store all information collected by the Logger. They
 are passed on to Appenders that output them, but Appenders usually don't 
@@ -341,8 +308,7 @@ unlink(tf)
 
 
 
-
-## Thresholds & Filters: Controlling Output Detail {#thresholds}
+## Thresholds & Filters: controlling output detail {#thresholds}
 
 To control the level of detail of the log output, you can set **thresholds** for
 Loggers and Appenders. A Logger with a threshold of `warn` will only create
@@ -373,7 +339,7 @@ lgr$set_filters(NULL)
 ```
 
 
-## Appenders: Managing Log Destinations
+## Appenders: Managing log destinations
 
 The root logger only logs to the console by default. If you want to redirect 
 the output to a file you can just add a file appender to lgr.
@@ -397,8 +363,6 @@ readLines(tf)
 
 # Remove the appender again
 lgr$remove_appender("file")
-```
-```{r echo = FALSE}
 unlink(tf)
 ```
 
@@ -434,7 +398,7 @@ understand and illustrate the *how* and *why* pretty well.
 
 
 
-### Log Flow
+### Log flow
 
 The graph bellow outlines the flow of LogEvents through the logging system.
 This is an important reference if you want to work with Filters and Logger
@@ -476,6 +440,60 @@ You can suppress this behaviour by making named argument start with a `"."`.
 lg$info("Glue is available from {.cran}", .cran = "https://CRAN.R-project.org/package=glue")
 ```
 
+
+# Configuration
+
+
+## With setters
+
+There are several different ways to configure loggers. The most straight 
+forward one is to use *setters* to specify the Loggers properties.
+```{r}
+lg <- get_logger("test")
+lg$config(NULL)  # resets logger to unconfigured state
+lg$set_threshold("fatal")
+```
+
+lgr sets up Loggers in a way so that R6 piping with `$` is possible. This works 
+similar to the magrittr (`#%>#`) pipes.
+```{r}
+lg$
+  set_threshold("info")$
+  set_appenders(AppenderConsole$new(threshold = "info"))$
+  set_propagate(FALSE)
+```
+
+## With a list object
+```{r}
+lg$config(list(
+  threshold = "info",
+  propagate = FALSE,
+  appenders = AppenderConsole$new(threshold = "info")
+))
+```
+
+## With YAML or JSON
+
+You can use YAML and JSON config files with lgr. 
+```{r eval = FALSE}
+lg$config("path/to/config.yaml")
+lg$config("path/to/config.json")
+```
+
+You can also pass in YAML/JSON directly as a character string (or vector with
+one element per line)
+```{r}
+# Via YAML
+cfg <- "
+  Logger:
+    threshold: info
+    propagate: false
+    appenders:
+      AppenderConsole:
+        threshold: info
+"
+lg$config(cfg)
+```
 
 
 # Examples {#examples}
@@ -566,18 +584,48 @@ cat(readLines(tf), sep = "\n")
 ```{r echo = FALSE}
 lg$appenders$json$show()
 ```
-
-
-
-
-```{r, echo = FALSE}
+```{r}
+# cleanup
+lg$config(NULL)
 unlink(tf)
 ```
 
 
 
+## Logging to rotating files
 
-## Logger Hierarchies  {#examples-hierarchy}
+lgr can also log to rotating files. The following example logs to a file that
+is reset and backed-up once it reaches a size of 10kb. Only the last 5 backups
+of the logfile are kept.
+
+```{r}
+# install.packages("rotor")
+tf <- tempfile(fileext = ".log")
+
+lg <- get_logger("test")$
+  set_propagate(FALSE)$
+  set_appenders(list(rotating = AppenderFileRotating$new(
+    file = tf, 
+    size = "10 kb",
+    max_backups = 5))
+  )
+
+for (i in 1:100) lg$info(paste(LETTERS, sep = "-"))
+
+# display info on the backups of tf
+lg$appenders$rotating$backups
+
+# manually delete all backups
+invisible(lg$appenders$rotating$prune(0))
+lg$appenders$rotating$backups
+
+#cleanup
+unlink(tf)
+```
+
+
+
+## Logger hierarchies  {#examples-hierarchy}
 
 The most common use cases for creating a new Logger rather than just using the
 root Logger is if you create a Package that should contain logging. This
@@ -623,12 +671,14 @@ Consequently, `lg` no longer outputs log messages to he console
 ```{r}
 lg$info("Nothing to see here")
 ```
-```{r echo = FALSE}
+```{r}
+# cleanup
+lg$config(NULL)
 unlink(tf)
 ```
 
 
-## Buffered Logging
+## Buffered logging
 
 The main purpose of AppenderBuffer is to retain LogEvents in memory and write
 them to destinations at a later point in time, e.g. when the Buffer is full and
@@ -644,18 +694,18 @@ For example, the will output the last 5 LogEvents that happened before an
 ```{r}
 lg <- get_logger("buffer")
 
-lg$config(logger_config(
-  threshold = NA,
-  propagate = FALSE,  # to suppress console output
-  appenders = AppenderBuffer$new(
+lg$
+  set_threshold(NA)$
+  set_propagate(FALSE)$
+  set_appenders(
+    AppenderBuffer$new(
     threshold = NA,
     buffer_size = 5, # can hold 5 events, the 6th will trigger flushing
     flush_on_exit = FALSE,
     flush_on_rotate = FALSE,
     flush_threshold = "error",
     appenders = AppenderConsole$new(threshold = NA)
-  )
-))
+  ))
 
 # The for loop below stores 8 log events in the Buffer
 for (nm in month.name[1:8]) lg$debug("%s", nm)
@@ -665,7 +715,7 @@ lg$error("But the days grow short when you reach September")
 ```
 
 
-## Logging to Databases
+## Logging to databases
 
 Logging to databases is simple, though a few aspects can be tricky to
 configure based on the backend used. For performance reasons database inserts
@@ -676,15 +726,16 @@ just set the buffer size to `0`.
 ```{r}
 # install.packages("RSQLite")
 lg <- get_logger("db_logger")
-lg$set_propagate(FALSE)
-lg$add_appender(
-  name = "db", 
-  AppenderDbi$new(
-    conn = DBI::dbConnect(RSQLite::SQLite()),
-    table = "log",
-    buffer_size = 2L
+lg$
+  set_propagate(FALSE)$
+  add_appender(
+    name = "db", 
+    AppenderDbi$new(
+      conn = DBI::dbConnect(RSQLite::SQLite()),
+      table = "log",
+      buffer_size = 2L
+    )
   )
-)
 
 lg$info("Logging to databases uses a buffer")
 lg$info("As the buffer size is 2, no insert took place till now")
@@ -695,7 +746,7 @@ lg$appenders$db$show()
 ```
 
 
-## Inject Values Into LogEvents
+## Inject values into LogEvents
 
 By abusing Filters, lgr can modify LogEvents as they are processed. One example
 for when this is useful is assigning a grouping identifier to a series of log 
@@ -749,7 +800,7 @@ You can use `with_log_level()` and `FilterForceLevel` in a similar fashion to
 modify the log level of events conveniently.
 
 
-## Temporarily Disable Logging
+## Temporarily disable logging
 
 Temporary disabling logging for portions of code is straight forward and easy 
 with lgr: 
@@ -763,7 +814,7 @@ without_logging({
 
 
 
-## Adding a Custom Logger to a Package
+## Adding a custom logger to a package
 
 If you are a package author, it is good practice to define a separate logger
 for your package. This gives users the ability to easily enable/disable 

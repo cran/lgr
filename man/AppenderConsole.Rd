@@ -14,18 +14,18 @@ x <- AppenderConsole$new(threshold = NA_integer_, layout = LayoutFormat$new(fmt
   = "\%L [\%t] \%m \%f", timestamp_fmt = "\%H:\%M:\%OS3", colors =
   getOption("lgr.colors", list())), filters = NULL)
 
-x$append(event)
-x$set_threshold(level)
-x$set_layout(layout)
-x$filter(event)
 x$add_filter(filter, name = NULL)
+x$append(event)
+x$filter(event)
 x$remove_filter(pos)
 x$set_filters(filters)
+x$set_layout(layout)
+x$set_threshold(level)
 
 x$destination
+x$filters
 x$layout
 x$threshold
-x$filters
 
 }
 }
@@ -92,22 +92,24 @@ was specified)
 # create a new logger with propagate = FALSE to prevent routing to the root
 # logger. Please look at the section "Logger Hirarchies" in the package
 # vignette for more info.
-logger  <- Logger$new("testlogger", propagate = FALSE)
+lg  <- get_logger("test")$set_propagate(FALSE)
 
-logger$add_appender(AppenderConsole$new())
-logger$add_appender(AppenderConsole$new(
+lg$add_appender(AppenderConsole$new())
+lg$add_appender(AppenderConsole$new(
   layout = LayoutFormat$new("[\%t] \%c(): [\%n] \%m", colors = getOption("lgr.colors"))))
 
 # Will output the message twice because we attached two console appenders
-logger$warn("A test message")
-
+lg$warn("A test message")
+lg$config(NULL) # reset config
 }
 \seealso{
 \link{LayoutFormat}
 
 Other Appenders: \code{\link{AppenderBuffer}},
-  \code{\link{AppenderDbi}}, \code{\link{AppenderFile}},
-  \code{\link{AppenderGmail}}, \code{\link{AppenderJson}},
+  \code{\link{AppenderDbi}},
+  \code{\link{AppenderFileRotating}},
+  \code{\link{AppenderFile}}, \code{\link{AppenderGmail}},
+  \code{\link{AppenderJson}},
   \code{\link{AppenderPushbullet}},
   \code{\link{AppenderRjdbc}},
   \code{\link{AppenderSendmail}},

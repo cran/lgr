@@ -65,23 +65,23 @@
 #' @seealso [as.data.frame.LogEvent()]
 #' @aliases LogEvents
 #' @examples
-#' l <- Logger$new("dummy logger", appenders = NULL)
-#' l$error("foo bar")
+#' lg <- get_logger("test")
+#' lg$error("foo bar")
 #'
 #' # The last LogEvent produced by a Logger is stored in the last_event field
-#' l$last_event  # formatted by default
-#' l$last_event$values  # values stored in the event
+#' lg$last_event  # formatted by default
+#' lg$last_event$values  # values stored in the event
 #'
 #' # Also contains the Logger that created it as .logger
-#' l$last_event$logger
+#' lg$last_event$logger
 #' # equivalent to
-#' l$last_event$.logger$name
+#' lg$last_event$.logger$name
 #'
 #' # This is really a reference to the complete Logger, so the following is
 #' # possible (though nonsensical)
-#' l$last_event$.logger$last_event$msg
-#' identical(l, l$last_event$.logger)
-#'
+#' lg$last_event$.logger$last_event$msg
+#' identical(lg, lg$last_event$.logger)
+#' lg$config(NULL)  # reset logger config
 NULL
 
 
@@ -159,29 +159,27 @@ LogEvent <- R6::R6Class(
 #' or [`tibbles`][tibble::tibble].
 #'
 #' @inheritParams base::as.data.frame
+#' @param stringsAsFactors `logical` scalar: should `character` vectors be
+#'   converted to factors? Defaults to `FALSE` (as opposed to
+#'   [base::as.data.frame()]) and is only included for compatibility.
 #' @param ... passed on to `data.frame()`
-#' @param optional currently ignored
-#' @param strict If `TRUE` as.data.frame will fail if `x` contains values that
-#'   cannot be included in a data.frame. Ff `FALSE` (the default) they will
-#'   be coerced
+#' @param optional currently ignored and only included for compatibility.
 #' @export
 #' @seealso [data.table::data.table], [tibble::tibble]
 #'
 #' @examples
-#' l <- Logger$new("test")
-#' l$info("lorem ipsum")
-#' as.data.frame(l$last_event)
+#' lg <- get_logger("test")
+#' lg$info("lorem ipsum")
+#' as.data.frame(lg$last_event)
 #'
-#' l$info("rememver LogEvents can store any custom log values", df = iris)
-#' as.data.frame(l$last_event)
-#' head(as.data.frame(l$last_event)$df[[1]])
-#'
+#' lg$info("LogEvents can store any custom log values", df = iris)
+#' as.data.frame(lg$last_event)
+#' head(as.data.frame(lg$last_event)$df[[1]])
 as.data.frame.LogEvent <- function(
   x,
   row.names = NULL,
   optional = FALSE,
-  stringsAsFactors = default.stringsAsFactors(),
-  strict = FALSE,
+  stringsAsFactors = FALSE,
   ...
 ){
   values <- x$values

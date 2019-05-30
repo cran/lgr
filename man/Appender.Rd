@@ -5,32 +5,31 @@
 \alias{Appenders}
 \title{Appenders}
 \description{
-Appenders are assigned to \link{Loggers} and
-manage the output of the \link{LogEvents} to a destination, such as the console or
-a text file. An Appender must have a single \link{Layout} that tells it how to
-format the LogEvent. For details please refer to the documentations of the
-specific Appenders.
+Appenders are assigned to \link{Loggers} and manage the output of the \link{LogEvents}
+to a destination (such as the console or a text file). An Appender has a
+single \link{Layout} that tells it how to format the LogEvent. For details
+please refer to the documentations of the specific Appenders.
 
-\strong{Appender is not designed for direct usage}, but it is the basis on which all
-other Appenders are built. Please see the \strong{see also} section towards the
-end of this document a list of available Appenders.
+The Appender class itself \strong{is not designed for direct usage}, but it is the
+basis on which all other Appenders are built. Please see the \strong{see also}
+section towards the end of this document a list of available Appenders.
 }
 \section{Usage}{
 \preformatted{
 x <- Appender$new(layout = Layout$new(), threshold = NA_integer_)
 
-x$append(event)
-x$set_threshold(level)
-x$set_layout(layout)
-x$filter(event)
 x$add_filter(filter, name = NULL)
+x$append(event)
+x$filter(event)
 x$remove_filter(pos)
 x$set_filters(filters)
+x$set_layout(layout)
+x$set_threshold(level)
 
 x$destination
+x$filters
 x$layout
 x$threshold
-x$filters
 
 }
 }
@@ -96,6 +95,7 @@ was specified)
 \seealso{
 Other Appenders: \code{\link{AppenderBuffer}},
   \code{\link{AppenderConsole}}, \code{\link{AppenderDbi}},
+  \code{\link{AppenderFileRotating}},
   \code{\link{AppenderFile}}, \code{\link{AppenderGmail}},
   \code{\link{AppenderJson}},
   \code{\link{AppenderPushbullet}},

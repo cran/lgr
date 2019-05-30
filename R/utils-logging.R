@@ -83,20 +83,26 @@ with_logging <- function(code){
 #'
 #' @param level `integer` or `character` scalar: the desired log level
 #' @param code Any \R code
-#' @param logger a [Logger]. defaults to the root logger (lgr::lgr).
+#' @param logger a [Logger] or the name of one (see [get_logger()]). Defaults
+#'   to the root logger (`lgr::lgr`).
 #'
 #' @return whatever `code` would return
 #' @export
 #' @examples
 #' with_log_level("warn", {
 #'   lgr$info("More important than it seems")
-#'   FATAL("Really not so bad")
+#'   lgr$fatal("Really not so bad")
 #' })
 with_log_level <- function(
   level,
   code,
   logger = lgr::lgr
 ){
+  if (is_scalar_character(logger)){
+    logger <- get_logger(logger)
+  }
+  assert(is_Logger(logger))
+
   level <- standardize_log_level(level)
   force(level)
 
@@ -125,17 +131,20 @@ with_log_level <- function(
 #' @rdname with_log_level
 #' @export
 #' @examples
-#'
 #' with_log_value(
 #'   list(msg = "overriden msg"),  {
 #'   lgr$info("bar")
-#'   INFO("FOO")
+#'   lgr$fatal("FOO")
 #' })
 with_log_value <- function(
   values,
   code,
   logger = lgr::lgr
 ){
+  if (is_scalar_character(logger)){
+    logger <- get_logger(logger)
+  }
+  assert(is_Logger(logger))
   assert(is_equal_length(names(values), values))
 
   set_level <- function(event){

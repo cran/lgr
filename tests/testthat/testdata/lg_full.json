@@ -1,0 +1,28 @@
+{
+  "Logger": {
+    "threshold": "info",
+    "propagate": false,
+    "appenders": {
+      "AppenderConsole": {
+        "threshold": "error",
+        "layout": {
+          "LayoutFormat": {
+            "fmt": "%L %t - %m"
+          }
+        }
+      },
+      "AppenderBuffer": {
+        "appenders": {
+          "AppenderConsole": {
+            "threshold": 123,
+            "layout": {
+              "LayoutFormat": {
+                "fmt": "%L %t - %m"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

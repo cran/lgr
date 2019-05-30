@@ -49,12 +49,12 @@ get_caller <- function(
 #'
 #' @seealso [whoami::whoami()]
 #' @name system_infos
-#' @examples
-#' get_user()
-#'
 #' @param fallback A fallback in case the user name could not be determined
 #' @rdname system_infos
 #' @export
+#' @examples
+#' get_user()
+
 get_user <- function(fallback = "unknown user"){
   guess_user <- function(){
     if (requireNamespace("whoami", quietly = TRUE)){
@@ -218,9 +218,31 @@ last <- function(x){
 
 
 
-# to prevent "Namespace not imported from" NOTE on some systems
-cran_import_note <- function(...){
-  R6::is.R6(NULL)
+is_Id = function(x){
+  inherits(x, "Id")
+}
+
+
+
+
+
+is_zipcmd_available <- function(cmd = Sys.getenv("R_ZIPCMD", "zip")){
+
+  if (is_blank(cmd)){
+    return(FALSE)
+  }
+
+  if (.Platform$OS.type == "windows"){
+    suppressWarnings(res <- system2("where", cmd, stderr = NULL, stdout = NULL))
+  } else {
+    res <- tryCatch(
+      system2("command", paste("-v", cmd), stderr = NULL, stdout = NULL),
+      warning = function(w) {99}
+    )
+  }
+
+  assert(is_scalar(res))
+  res == 0
 }
 
 # nocov end

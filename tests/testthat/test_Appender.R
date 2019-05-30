@@ -1,8 +1,6 @@
 context("Appender")
 
 
-
-
 x <- LogEvent$new(
   logger = Logger$new("dummy"),
   level = 200L,
@@ -41,6 +39,7 @@ test_that("setting appender threshold works", {
 # AppenderFile ---------------------------------------------------------
 test_that("AppenderFile works as expected", {
   tf <- tempfile()
+  on.exit(unlink(tf))
 
   # with default format
   app <- AppenderFile$new(file = tf)
@@ -52,6 +51,7 @@ test_that("AppenderFile works as expected", {
   unlink(tf)
 
   tf <- tempfile()
+  on.exit(unlink(tf))
   # with Json
   app <- AppenderFile$new(file = tf, layout = LayoutJson$new())
   app$append(x)
@@ -63,16 +63,29 @@ test_that("AppenderFile works as expected", {
   expect_identical(tres[["msg"]], eres[["msg"]])
   expect_true(all(is.na(tres[["caller"]])) && all(is.na(eres[["caller"]])))
   expect_equal(as.POSIXct(tres[["timestamp"]]), eres[["timestamp"]], tolerance = 1)
-  unlink(tf)
 })
 
 
+
+
+test_that("AppenderFile creates empty log file on init", {
+  tf <- tempfile()
+  on.exit(unlink(tf))
+
+  expect_error(AppenderFile$new(
+    file = file.path(tempdir(), "non", "existing", "directory" )
+  ))
+
+  AppenderFile$new(file = file.path(tf))
+  expect_true(file.exists(tf))
+})
 
 
 # AppenderJson ------------------------------------------------------------
 
 test_that("AppenderJson show method works as expected", {
   tf <- tempfile()
+  on.exit(unlink(tf))
 
   # with default format
   app <- AppenderJson$new(file = tf)
@@ -87,7 +100,6 @@ test_that("AppenderJson show method works as expected", {
 
   r <- utils::capture.output(app$show(threshold = 100))
   expect_identical(r, "")
-  unlink(tf)
 })
 
 
@@ -235,8 +247,6 @@ test_that("AppenderDt: .custom works", {
       .custom = NA_integer_
     ))
   )
-
-
 })
 
 
@@ -262,18 +272,21 @@ test_that("AppenderDt: memory cycling works", {
 
 
 test_that("AppenderDt: default format for show_log looks like format.LogEvent", {
+  lg <- get_logger("test")
+  on.exit(lg$config(NULL))
+  lg$add_appender(AppenderDt$new(), "memory")
 
-  xo <- capture.output(lgr::lgr$fatal("blubb"))
-  xp <- capture.output(lgr$appenders$memory$show(n = 1))
+  xo <- capture.output(lg$fatal("blubb"))
+  xp <- capture.output(lg$appenders$memory$show(n = 1))
   expect_identical(xo, xp)
 
   xo <- capture.output(
-    lgr::lgr$fatal("blubb", foo = "bar", fizz = "buzz", iris = iris)
+    lg$fatal("blubb", foo = "bar", fizz = "buzz", iris = iris)
   )
-  xp <- capture.output(lgr$appenders$memory$show(n = 1))
+  xp <- capture.output(lg$appenders$memory$show(n = 1))
   expect_identical(xo, xp)
 
-  expect_length(capture.output(lgr$appenders$memory$show(n = 2)), 2)
+  expect_length(capture.output(lg$appenders$memory$show(n = 2)), 2)
 })
 
 
@@ -387,8 +400,10 @@ test_that("AppenderBuffer: flush on object destruction can be switched of", {
   l$appenders$buffer$set_flush_on_exit(FALSE)
   rm(l)
   gc()
-  expect_false(file.exists(buffer_log))
-  suppressWarnings(file.remove(buffer_log))
+  expect_true(file.exists(buffer_log))
+  expect_equal(file.size(buffer_log), 0)
+
+  expect_true(file.remove(buffer_log))
 })
 
 

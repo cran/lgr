@@ -27,11 +27,9 @@ a \code{character} vector for \code{label_levels()} and an integer vector for
 Label/Unlabel Log Levels
 }
 \examples{
-
 x <- label_levels(c(seq(0, 600, by = 100), NA))
 print(x)
 unlabel_levels(x)
-
 }
 \seealso{
 \code{\link[=get_log_levels]{get_log_levels()}}

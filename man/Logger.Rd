@@ -24,38 +24,37 @@ lg <- Logger$new(name = "(unnamed logger)", appenders = list(), threshold =
   NULL, filters = list(), exception_handler = default_exception_handler,
   propagate = TRUE)
 
-lg$log(level, msg, ..., timestamp = Sys.time(), caller = get_caller(-7))
-lg$fatal(msg, ..., caller = get_caller(-8L))
-lg$error(msg, ..., caller = get_caller(-8L))
-lg$warn(msg, ..., caller = get_caller(-8L))
-lg$info(msg, ..., caller = get_caller(-8L))
-lg$debug(msg, ..., caller = get_caller(-8L))
-lg$trace(msg, ..., caller = get_caller(-8L))
-lg$config(cfg = NULL, file = NULL, text = NULL)
 lg$add_appender(appender, name = NULL)
-lg$remove_appender(pos)
+lg$add_filter(filter, name = NULL)
+lg$config(cfg, file, text, list)
+lg$debug(msg, ..., caller = get_caller(-8L))
+lg$error(msg, ..., caller = get_caller(-8L))
+lg$fatal(msg, ..., caller = get_caller(-8L))
+lg$filter(event)
 lg$handle_exception(...)
-lg$set_name(x)
+lg$info(msg, ..., caller = get_caller(-8L))
+lg$log(level, msg, ..., timestamp = Sys.time(), caller = get_caller(-7))
+lg$remove_appender(pos)
+lg$remove_filter(pos)
+lg$set_appenders(x)
 lg$set_exception_handler(fun)
+lg$set_filters(filters)
 lg$set_propagate(x)
 lg$set_threshold(level)
-lg$set_appenders(x)
 lg$spawn(name, ...)
-lg$filter(event)
-lg$add_filter(filter, name = NULL)
-lg$remove_filter(pos)
-lg$set_filters(filters)
+lg$trace(msg, ..., caller = get_caller(-8L))
+lg$warn(msg, ..., caller = get_caller(-8L))
 
 lg$ancestry
 lg$appenders
 lg$exception_handler
+lg$filters
 lg$inherited_appenders
 lg$last_event
 lg$name
 lg$parent
 lg$propagate
 lg$threshold
-lg$filters
 
 }
 }
@@ -75,7 +74,8 @@ Reference to the existing Logger.
 
 The \code{name} is potentially a \code{/} separated hierarchical value like
 \code{foo/bar/baz}. Loggers further down the hierarchy are children of the loggers
-above.
+above. (This mechanism does not work of the Logger is initialized with
+\code{Logger$new()})
 
 All calls to \code{get_logger()} with the same name return the same Logger
 instance. This means that Logger instances never need to be passed between
@@ -93,14 +93,6 @@ You can modify the fields of an existing Logger with
 loggers is via its \code{$config()} method.
 
 \describe{
-\item{\code{name}, \code{set_name(x)}}{\code{character} scalar. A name for the Logger that should be
-unique among Loggers. This logger name is used in the Loggers print
-method and can be used by Appenders to indicate which logger the
-log message came from. If you define a Logger for an R Package (the most
-common case for defining new Loggers), the logger name should be the
-same name as the Package name. If you do not define a Logger name
-manually, a warning will be thrown.}
-
 \item{\code{appenders}, \code{set_appenders(x)}}{A single \link{Appender} or a \code{list}
 thereof. Appenders control the output of a Logger. Be aware that a Logger
 also inherits the Appenders of its ancestors
@@ -140,6 +132,12 @@ In addition to the active bindings used to access the fields described above,
 Loggers also have the following additional read-only bindings:
 
 \describe{
+\item{\code{name}}{\code{character} scalar. A hierarchical value
+(separated by `"/"``) that indicates the loggers name and its ancestors.
+If a logger is created with \code{\link[=get_logger]{get_logger()}} uniqueness of the name is
+enforced.
+}
+
 \item{\code{ancestry}}{A named \code{logical} vector of containing
 the propagate value of each Logger upper the inheritance tree. The names
 are the names of the appenders. \code{ancestry} is an S3 class with a custom
@@ -192,12 +190,19 @@ to the relevant \link{Appenders} and checked against their thresholds and
 filters.
 }
 
-\item{\code{config(cfg  = NULL, file = NULL, text = NULL}}{Load a Logger
-configuration. \code{cfg} can be either a special list object, the path to
-a YAML config file, or a character scalar containing YAML. The arguments
-\code{file} and \code{text} can used alternatively and enforce that the supplied
-argument is of the specified type.
-See \link{logger_config} for details.
+\item{\code{config(cfg, file, text, list}}{Load a Logger
+configuration. \code{cfg} can be either
+\itemize{
+\item a special list object with any or all of the the following elements:
+\code{appenders}, \code{threshold}, \code{filters}, \code{propagate}, \code{exception_handler},
+\item the path to a \code{YAML}/\code{JSON} config file,
+\item a \code{character} scalar containing \code{YAML},
+\item \code{NULL} (to reset the logger config to the default/unconfigured state)
+}
+
+The arguments \code{file}, \code{text} and \code{list} can be used as an alternative to
+\code{cfg} that  enforces that the  supplied  argument is of the specified
+type. See \link{logger_config} for details.
 }
 
 \item{\code{add_appender(appender, name = NULL)}, \code{remove_appender(pos)}}{
@@ -245,13 +250,19 @@ examples.
 
 \examples{
 # lgr::lgr is the root logger that is always available
-lgr$info("Today is \%s", Sys.Date() )
+lgr$info("Today is a good day")
 lgr$fatal("This is a serious error")
 
-# You can create new loggers with Logger$new(). The following creates a
-# logger that logs to a temporary file.
+# Loggers use sprintf() for string formatting by default
+lgr$info("Today is \%s", Sys.Date() )
+
+# If no unnamed `...` are present, msg is not passed through sprintf()
+lgr$fatal("100\% bad")  # so this works
+lgr$fatal("\%s\%\% bad", 100)  # if you use unnamed arguments, you must escape \%
+
+# You can create new loggers with get_logger()
 tf <- tempfile()
-lg <- Logger$new("mylogger", appenders = AppenderFile$new(tf))
+lg <- get_logger("mylogger")$set_appenders(AppenderFile$new(tf))
 
 # The new logger passes the log message on to the appenders of its parent
 # logger, which is by default the root logger. This is why the following
@@ -259,11 +270,10 @@ lg <- Logger$new("mylogger", appenders = AppenderFile$new(tf))
 lg$fatal("blubb")
 readLines(tf)
 
-# This logger's print() method depicts this relationship
-lg2 <- Logger$new("lg/child")
-print(lg2)
-print(lg2$ancestry)
-print(lg2$name)
+# This logger's print() method depicts this relationship.
+child <- get_logger("lg/child")
+print(child)
+print(child$name)
 
 # use formatting strings and custom fields
 tf2 <- tempfile()
@@ -273,16 +283,59 @@ cat(readLines(tf), sep = "\\n")
 cat(readLines(tf2), sep = "\\n")
 
 # cleanup
-unlink(tf)
-unlink(tf2)
-
-# The following works because if no unnamed `...` are present, msg is not
-# passed through sprintf() (otherwise you would have to escape the "\%")
-lg$fatal("100\%")
+unlink(c(tf, tf2))
+lg$config(NULL)  # reset logger config
 
 # LoggerGlue
-lg <- LoggerGlue$new("glue")
-lg$fatal("blah ", "fizz is set to: {fizz}", foo = "bar", fizz = "buzz")
+# You can also create a new logger that uses the awesome glue library for
+# string formatting instead of sprintf
+
+if (requireNamespace("glue")){
+
+  lg <- get_logger_glue("glue")
+  lg$fatal("blah ", "fizz is set to: {fizz}", foo = "bar", fizz = "buzz")
+  # prevent creation of custom fields with prefixing a dot
+  lg$fatal("blah ", "fizz is set to: {.fizz}", foo = "bar", .fizz = "buzz")
+
+  #' # completely reset 'glue' to an unconfigured vanilla Logger
+  get_logger("glue", reset = TRUE)
+
+}
+
+
+# Configuring a Logger
+lg <- get_logger("test")
+lg$config(NULL)  # resets logger to unconfigured state
+
+# With setters
+lg$
+  set_threshold("error")$
+  set_propagate(FALSE)$
+  set_appenders(AppenderConsole$new(threshold = "info"))
+
+lg$config(NULL)
+
+# With a list
+lg$config(list(
+  threshold = "error",
+  propagate = FALSE,
+  appenders = list(AppenderConsole$new(threshold = "info"))
+))
+
+lg$config(NULL)  # resets logger to unconfigured state
+
+# Via YAML
+cfg <- "
+Logger:
+  threshold: error
+  propagate: false
+  appenders:
+    AppenderConsole:
+      threshold: info
+"
+
+lg$config(cfg)
+lg$config(NULL)
 }
 \seealso{
 \href{https://glue.tidyverse.org/}{glue}

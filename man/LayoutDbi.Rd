@@ -4,6 +4,7 @@
 \alias{LayoutDbi}
 \alias{LayoutSqlite}
 \alias{LayoutRjdbc}
+\alias{LayoutRjdbcDb2}
 \alias{LayoutDb2}
 \alias{LayoutMySql}
 \alias{LayoutPostgres}
@@ -27,24 +28,25 @@ LogEvents directly, but their \code{data.table} representations (see
 \preformatted{
 x <- LayoutDbi$new(col_types = NULL, fmt = "\%L [\%t] \%m \%f", timestamp_fmt =
   "\%Y-\%m-\%d \%H:\%M:\%S", colors = getOption("lgr.colors", list()), pad_levels =
-  "right")
+  "right", format_table_name = identity, format_colnames = identity,
+  format_data = identity)
 
-x$format_table_name(x)
-x$format_colnames(x)
-x$format_data(x)
-x$set_col_types(x)
-x$sql_create_table(table)
 x$clone(deep = FALSE)
 x$format_event(event)
-x$set_fmt(x)
-x$set_timestamp_fmt(x)
+x$set_col_types(x)
 x$set_colors(x)
+x$set_fmt(x)
 x$set_pad_levels(x)
+x$set_timestamp_fmt(x)
+x$sql_create_table(table)
 
 x$col_names
 x$col_types
 x$colors
 x$fmt
+x$format_colnames
+x$format_data
+x$format_table_name
 x$pad_levels
 x$timestamp_fmt
 
