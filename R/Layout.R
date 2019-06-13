@@ -39,7 +39,8 @@ Layout <- R6::R6Class(
   "Layout",
 
   public = list(
-    format_event = function(event) paste(capture.output(print(event$values)), collapse = " ")
+    format_event = function(event) paste(capture.output(print(event$values)), collapse = " "),
+    toString = function() "<empty>"
   )
 )
 
@@ -156,6 +157,10 @@ LayoutFormat <- R6::R6Class(
       assert(is_scalar_character(x))
       private$.pad_levels <- x
       invisible(self)
+    },
+
+    toString = function(){
+      paste(fmt_class(class(self)[[1]]), self$fmt)
     }
   ),
 
@@ -242,6 +247,7 @@ LayoutGlue <- R6::R6Class(
       self$set_fmt(fmt)
     },
 
+
     format_event = function(
       event
     ){
@@ -251,11 +257,13 @@ LayoutGlue <- R6::R6Class(
       unclass(glue::glue(get(".fmt", private), .envir = event))
     },
 
+
     set_fmt = function(x){
       assert(is_scalar_character(x))
       private$.fmt <- x
       invisible(self)
     },
+
 
     set_colors = function(x){
       assert(
@@ -265,6 +273,11 @@ LayoutGlue <- R6::R6Class(
       )
       private$.colors <- x
       invisible(self)
+    },
+
+
+    toString = function() {
+      paste(fmt_class(class(self)[[1]]), self$fmt)
     }
   ),
 
@@ -419,8 +432,17 @@ LayoutDbi <- R6::R6Class(
         col_types = private$.col_types,
         col_names = names(private$.col_types)
       )
+    },
+
+
+    toString = function(){
+      paste(
+        fmt_class(class(self)[[1]]),
+        paste(self$col_names, collapse = ", ")
+      )
     }
   ),
+
 
   active = list(
     col_types = function() {
@@ -759,6 +781,10 @@ LayoutJson <- R6::R6Class(
       assert(identical(length(names(x)), length(x)))
       private$.toJSON_args <- x
       invisible(self)
+    },
+
+    toString = function() {
+      fmt_class(class(self)[[1]])
     }
   ),
 

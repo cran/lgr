@@ -43,6 +43,15 @@ cat(readLines(tf))
 read_json_lines(tf)
 
 ## ------------------------------------------------------------------------
+# show is a method and takes some extra arguments, like maximum number of lines
+# to show
+lgr$appenders$json$show()
+
+# $data always returns a data.frame if available. It is an active binding 
+# rather than a method, so no extra arguments are possible
+lgr$appenders$json$data  
+
+## ------------------------------------------------------------------------
 # The default console appender displays custom fields as pseudo-json after the message
 lgr$info("Styria has", poultry = c("capons", "turkeys"))
 

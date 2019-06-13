@@ -2,12 +2,6 @@
 % Please edit documentation in R/simple_logging.R
 \name{simple_logging}
 \alias{simple_logging}
-\alias{FATAL}
-\alias{ERROR}
-\alias{WARN}
-\alias{INFO}
-\alias{DEBUG}
-\alias{TRACE}
 \alias{log_exception}
 \alias{threshold}
 \alias{console_threshold}
@@ -18,18 +12,6 @@
 \alias{show_data}
 \title{Simple Logging}
 \usage{
-FATAL(msg, ...)
-
-ERROR(msg, ...)
-
-WARN(msg, ...)
-
-INFO(msg, ...)
-
-DEBUG(msg, ...)
-
-TRACE(msg, ...)
-
 log_exception(code, logfun = lgr$fatal, caller = get_caller(-3))
 
 threshold(level, target = lgr::lgr)
@@ -47,8 +29,6 @@ show_dt(target = lgr::lgr)
 show_data(target = lgr::lgr)
 }
 \arguments{
-\item{msg, ...}{passed on to \code{\link[base:sprintf]{base::sprintf()}}}
-
 \item{code}{Any \R code}
 
 \item{logfun}{a \code{function} for processing the log request, usually
@@ -56,11 +36,10 @@ show_data(target = lgr::lgr)
 
 \item{caller}{a \code{character} scalar. The name of the calling function}
 
-\item{level, threshold}{an \code{integer} or \code{character} scalar, see
-\code{getOption("lgr.log_levels")} for possible values. For \code{threshold} \code{0}
-(\code{"off"}) and \code{NA} (\code{"all"}) are also valid.}
+\item{level}{\code{integer} or \code{character} scalar: the desired log level}
 
-\item{target}{a \link{Logger} or \link{Appender}. Defaults to the root logger.}
+\item{target}{a \link{Logger} or \link{Appender} or the name of a Logger as \code{character}
+scalar}
 
 \item{appender}{an \code{Appender}}
 
@@ -68,59 +47,71 @@ show_data(target = lgr::lgr)
 
 \item{pos}{\code{integer} index or \code{character} names of the appenders to remove}
 
+\item{threshold}{\code{character} or \code{integer} scalar. The minimum \link[=log_levels]{log level} that should be processed by the root logger.}
+
 \item{n}{\code{integer} scalar. Show only the last \code{n} log entries that match
 \code{threshold}}
 }
 \value{
-\code{FATAL()} ... \code{TRACE()} and \code{log_exception()} return the log message
-as a \code{character} vector.
-
 \code{threshold()} and \code{console_threshold()} return the \link{log_level} of \code{target}
 as \code{integer} (invisibly)
 
 \code{add_appender()} and \code{remove_appender()} return \code{target}.
 
 \code{show_log()} prints to the console and returns whatever the target
-Appender's \code{$show()} method returns, usually a \code{data.frame} or \code{data.table}
-(invisibly).
+Appender's \code{$show()} method returns, usually a \code{character} vector,
+\code{data.frame} or \code{data.table} (invisibly).
 
 \code{show_data()} always returns a \code{data.frame} and \code{show_dt()} always returns
 a \code{data.table}.
 }
 \description{
-These functions provide a simple interface to the root logger. If you do not
-need any of the more advanced features of lgr, start here.
-
-lgr provides convenience functions to manage the root Logger. These
-are intended for interactive use, and for people who just need basic
-logging facilities and don't want to worry about hierarchical loggers and
-R6 classes.
+lgr provides convenience functions managing the root Logger. These are
+designed chiefly for interactive use and are less verbose than their
+R6 method counterparts.
 
 \code{threshold()} sets or retrieves the threshold for an \link{Appender} or \link{Logger}
-(the minimum level of log messages it processes). It's \code{target} defaults
-to the root logger.
+(the minimum level of log messages it processes). It's \code{target} defaults to
+the root logger. (equivalent to \code{lgr::lgr$threshold} and
+\code{lgr::lgr$set_threshold})
 
 \code{console_threshold()} is a shortcut to set the threshold of the root
 loggers \link{AppenderConsole}, which is usually the only Appender that manages
-console output for a given \R session.
+console output for a given \R session. (equivalent to
+\code{lgr::lgr$appenders$console$threshold} and
+\code{lgr::lgr$appenders$console$set_threshold})
 
-\code{add_appender()} and \code{remove_appender()} add Appenders to Loggers and
-other Appenders.
+\code{add_appender()} and \code{remove_appender()} add Appenders to Loggers and other
+Appenders. (equivalent to \code{lgr::lgr$add_appender} and
+\code{lgr::lgr$remove_appender})
 
-\code{show_log()} displays the last \code{n} log entries of \code{target} if \code{target} is
-an Appender with a \code{show()} method or a Logger with at least one such
-Appender attached. \code{target} defaults to the root logger. If you have
-configured the root logger with
-\code{\link[=basic_config]{basic_config(memory = TRUE)}}, it will have an
-\link{AppenderBuffer} that logs all log messages (including \code{TRACE} and \code{DEBUG}),
-even if they were not printed to the console before.
+\code{show_log()} displays the last \code{n} log entries of an Appender (or a Logger
+with such an Appender attached) with a \code{$show()} method. Most, but not all
+Appenders support this function (try \link{AppenderFile} or \link{AppenderBuffer}).
 
 \code{show_data()} and \code{show_dt()} work similar to \code{show_log()}, except that
-they return the log as \code{data.frame} or \code{data.table} respectively.
+they return the log as \code{data.frame} or \code{data.table} respectively. Only
+Appenders that log to formats that can easily be converted to \code{data.frames}
+are supported (try \link{AppenderJson} or \link{AppenderBuffer}).
+
+The easiest way to try out this features is by adding an AppenderBuffer
+to the root logger with \code{\link[=basic_config]{basic_config(memory = TRUE)}}.
 }
 \examples{
 add_appender(AppenderConsole$new(), "second_console_appender")
 lgr$fatal("Multiple console appenders are a bad idea")
 remove_appender("second_console_appender")
 lgr$info("Good that we defined an appender name, so it's easy to remove")
+
+# Reconfigure the root logger
+basic_config(memory = TRUE)
+
+# log some messages
+lgr$info("a log message")
+lgr$info("another message with data", data = 1:3)
+
+show_log()
+show_data()
+
+
 }

@@ -94,7 +94,45 @@ Appender <- R6::R6Class(
       )
       private$.layout <- layout
       invisible(self)
+    },
+
+    format = function(
+      color = FALSE,
+      ...
+    ){
+      assert(is_scalar_bool(color))
+      if (!color)
+        style_subtle <- identity
+
+      thr <- fmt_threshold(self$threshold, type = "character")
+
+      header <- paste(
+        paste0("<", class(self)[[1]], "> [", thr, "]")
+      )
+
+      if (!is.null(self$layout)){
+        res <- c(
+          header,
+          paste0("  layout: ", self$layout$toString())
+        )
+      }
+
+      if (!is.null(self$destination)){
+        res <- c(
+          res, paste("  destination:", self$destination)
+        )
+      }
+
+      if (!color)
+        style_error <- identity
+
+      if (class(self)[[1]] == "Appender"){
+        paste(res[[1]], style_error("[abstract class]"))
+      } else {
+        res
+      }
     }
+
   ),
 
 
@@ -118,7 +156,7 @@ Appender <- R6::R6Class(
 
 # AppenderConsole ---------------------------------------------------------
 
-#' Log to the Console
+#' Log to the console
 #'
 #' A simple Appender that outputs to the console. If you have the package
 #' **crayon** installed log levels will be coloured by default
@@ -188,7 +226,7 @@ AppenderConsole <- R6::R6Class(
 
 # AppenderFile ------------------------------------------------------------
 
-#' Log to a File
+#' Log to a file
 #'
 #' A simple Appender that outputs to a file in the file system. If you plan
 #' to log to text files, consider logging to JSON files and take a look at
@@ -320,7 +358,7 @@ AppenderFile <- R6::R6Class(
 
 # AppenderJson ------------------------------------------------------------
 
-#' Log to a JSON File
+#' Log to a JSON file
 #'
 #' `AppenderJson` is a shortcut for `AppenderFile` with [`LayoutJson`], but
 #' comes with an extra method `show()` and an extra active field `data` to
@@ -381,6 +419,8 @@ AppenderJson <- R6::R6Class(
       layout = LayoutJson$new(),
       filters = NULL
     ){
+      assert_namespace("jsonlite")
+
       self$set_file(file)
       self$set_threshold(threshold)
       self$set_layout(layout)
@@ -405,7 +445,7 @@ AppenderJson <- R6::R6Class(
 
 # AppenderTable -----------------------------------------------------------
 
-#' Abstract Class for Logging to Tabular Structures
+#' Abstract class for logging to tabular structures
 #'
 #' @template abstract_class
 #'
@@ -446,7 +486,23 @@ AppenderTable <- R6::R6Class(
   cloneable = FALSE,
 
   public = list(
-    show = function(threshold = NA_integer_, n = 20L) NULL
+    show = function(threshold = NA_integer_, n = 20L) NULL,
+
+    format = function(
+      color = FALSE,
+      ...
+    ){
+      res <- super$format(color = color, ...)
+
+      if (!color)
+        style_error <- identity
+
+      if (class(self)[[1]] == "AppenderTable"){
+        paste(res[[1]], style_error("[abstract class]"))
+      } else {
+        res
+      }
+    }
   ),
 
   active = list(
@@ -464,7 +520,7 @@ AppenderTable <- R6::R6Class(
 
 # AppenderDt ----------------------------------------------------------
 
-#' Log to an In-Memory Data.Table
+#' Log to an in-memory data.table
 #'
 #' An Appender that outputs to an in-memory `data.table`. This kind of
 #' Appender is useful for interactive use, and has very little overhead.
@@ -601,6 +657,7 @@ AppenderDt <- R6::R6Class(
       buffer_size = 1e5,
       filters = NULL
     ){
+      assert_namespace("data.table")
       assert(is_scalar_integerish(buffer_size))
       assert(
         data.table::is.data.table(prototype) && is.integer(prototype$.id),
@@ -788,7 +845,7 @@ AppenderDt <- R6::R6Class(
 
 # AppenderMemory  --------------------------------------------------
 
-#' Abstract Class for Logging to Memory Buffers
+#' Abstract class for logging to memory buffers
 #'
 #' @template abstract_class
 #'
@@ -928,6 +985,22 @@ AppenderMemory <- R6::R6Class(
       assign("logger", self[[".logger"]], dd)
       cat(self$layout$format_event(dd), sep = "\n")
       invisible(dd)
+    },
+
+    format = function(
+      color = FALSE,
+      ...
+    ){
+      res <- super$format(color = color, ...)
+
+      if (!color)
+        style_error <- identity
+
+      if (class(self)[[1]] == "AppenderMemory"){
+        paste(res[[1]], style_error("[abstract class]"))
+      } else {
+        res
+      }
     }
   ),
 
@@ -963,6 +1036,14 @@ AppenderMemory <- R6::R6Class(
       res[!vapply(res, is.null, FALSE)]
     },
 
+    data = function(){
+      self$buffer_df
+    },
+
+    dt = function(){
+      self$buffer_dt
+    },
+
     buffer_df = function() {
       as.data.frame(self[["buffer_dt"]])
     },
@@ -973,7 +1054,8 @@ AppenderMemory <- R6::R6Class(
         get("buffer_events", self),
         function(.x){
           vals <- .x$values
-          list_cols <- !vapply(vals, is.atomic, TRUE)
+          list_cols <- !vapply(vals, is_scalar_atomic, TRUE)
+          list_cols[["msg"]] <- FALSE
           vals[list_cols] <- lapply(vals[list_cols], list)
           data.table::as.data.table(vals)
         }
@@ -1012,7 +1094,7 @@ AppenderMemory <- R6::R6Class(
 
 # AppenderBuffer --------------------------------------------------
 
-#' Log to a Memory Buffer
+#' Log to a memory buffer
 #'
 #' An Appender that Buffers LogEvents in-memory and and redirects them to other
 #' Appenders once certain conditions are met.
@@ -1178,6 +1260,21 @@ AppenderBuffer <- R6::R6Class(
       }
 
       invisible(self)
+    },
+
+
+    format = function(
+      ...
+    ){
+      res <- super$format()
+      appenders <- appender_summary(self$appenders)
+      if (!is.null(appenders)){
+        res <-c(
+          res, paste0("    ", appenders)
+        )
+      }
+
+      res
     }
   ),
 
@@ -1231,7 +1328,7 @@ AppenderBuffer <- R6::R6Class(
 # AppenderDbi -------------------------------------------------------------
 
 
-#' Log to Databases via DBI
+#' Log to databases via DBI
 #'
 #' Log to a database table with any **DBI** compatible backend. Please be
 #' aware that AppenderDbi does *not* support case sensitive / quoted column
@@ -1564,7 +1661,7 @@ AppenderDbi <- R6::R6Class(
 
 # AppenderRjdbc -------------------------------------------------------------
 
-#' Log to Databases via RJDBC
+#' Log to databases via RJDBC
 #'
 #' Log to a database table with the **RJDBC** package. **RJDBC** is only
 #' somewhat  **DBI** compliant and does not work with [AppenderDbi].
@@ -1712,7 +1809,7 @@ AppenderRjdbc <- R6::R6Class(
 
 # AppenderDigest --------------------------------------------------------
 
-#' Abstract Class for Digests
+#' Abstract class for digests
 #'
 #' @template abstract_class
 #'
@@ -1751,17 +1848,35 @@ AppenderDigest <-  R6::R6Class(
 
   # +- public --------------------------------------------------------------
   public = list(
-
     set_subject_layout = function(layout){
       assert(inherits(layout, "Layout"))
       private$.subject_layout <- layout
       invisible(self)
+    },
+
+
+    format = function(
+      color = FALSE,
+      ...
+    ){
+      res <- super$format(color = color, ...)
+
+      if (!color)
+        style_error <- identity
+
+      if (class(self)[[1]] == "AppenderDigest"){
+        paste(res[[1]], style_error("[abstract class]"))
+      } else {
+        res
+      }
     }
   ),
+
 
   active = list(
     subject_layout = function() get(".subject_layout", private)
   ),
+
 
   private = list(
     .subject_layout = NULL
@@ -1774,7 +1889,7 @@ AppenderDigest <-  R6::R6Class(
 # AppenderPushbullet --------------------------------------------------------
 
 
-#' Send Push-Notifications via RPushbullet
+#' Send push-notifications via RPushbullet
 #'
 #' Send push notifications via [pushbullet](https://www.pushbullet.com/). This
 #' Appender keeps an in-memory buffer like [AppenderBuffer]. If the buffer is
@@ -1836,6 +1951,8 @@ AppenderPushbullet <- R6::R6Class(
       apikey = NULL,
       filters = NULL
     ){
+      assert_namespace("RPushbullet")
+
       private$initialize_buffer(buffer_size)
       self$set_flush_on_rotate(FALSE)
       self$set_flush_on_exit(FALSE)
@@ -1918,7 +2035,20 @@ AppenderPushbullet <- R6::R6Class(
 
   # +- active ---------------------------------------------------------------
   active = list(
-    apikey = function() private$.apikey
+    apikey = function() private$.apikey,
+    recipients = function() get(".recipients", private),
+    email = function() get(".email", private),
+    channel = function() get(".channel", private),
+    devices = function() get(".devices", private),
+    destination = function(){
+      if (!is.null(self$recipients))
+        return(self$recipients)
+      else if (!is.null(self$email)){
+        return(self$email)
+      } else if (!is.null(self$channel)){
+        self$channel
+      }
+    }
   ),
 
 
@@ -1936,7 +2066,7 @@ AppenderPushbullet <- R6::R6Class(
 
 # AppenderMail ------------------------------------------------------------
 
-#' Abstract Class for Email Appenders
+#' Abstract class for email appenders
 #'
 #' @template abstract_class
 #'
@@ -1969,25 +2099,46 @@ AppenderMail <- R6::R6Class(
       invisible(self)
     },
 
+
     set_from = function(x){
       private$.from <- x
       invisible(self)
     },
+
 
     set_cc = function(x){
       private$.cc <- x
       invisible(self)
     },
 
+
     set_bcc = function(x){
       private$.bcc <- x
       invisible(self)
     },
 
+
     set_html = function(x){
       assert(is_scalar_bool(x))
       private$.html <- x
       invisible(self)
+    },
+
+
+    format = function(
+      color = FALSE,
+      ...
+    ){
+      res <- super$format(color = color, ...)
+
+      if (!color)
+        style_error <- identity
+
+      if (class(self)[[1]] == "AppenderMail"){
+        paste(res[[1]], style_error("[abstract class]"))
+      } else {
+        res
+      }
     }
   ),
 
@@ -1998,7 +2149,8 @@ AppenderMail <- R6::R6Class(
     from = function() get(".from", envir = private),
     cc = function() get(".cc", envir = private),
     bcc = function() get(".bcc", envir = private),
-    html = function() get(".html", envir = private)
+    html = function() get(".html", envir = private),
+    destination = function() self$to
   ),
 
   private = list(
@@ -2015,7 +2167,7 @@ AppenderMail <- R6::R6Class(
 
 # AppenderSendmail --------------------------------------------------------
 
-#' Send Log Emails via sendmailR
+#' Send emails via sendmailR
 #'
 #' Send mails via [sendmailR::sendmail()], which requires that you have access
 #' to an SMTP server that does not require authentication. This
@@ -2182,7 +2334,7 @@ AppenderSendmail <- R6::R6Class(
 # AppenderGmail --------------------------------------------------------
 
 
-#' Send Log Emails via gmailr
+#' Send emails via gmailr
 #'
 #' Send mails via [gmailr::send_message()]. This
 #' Appender keeps an in-memory buffer like [AppenderBuffer]. If the buffer is
@@ -2400,10 +2552,12 @@ AppenderFileRotating <- R6::R6Class(
       self
     },
 
+
     append = function(event){
       super$append(event)
       self$rotate()
     },
+
 
     rotate = function(
       force   = FALSE
@@ -2422,10 +2576,12 @@ AppenderFileRotating <- R6::R6Class(
       self
     },
 
+
     prune = function(max_backups = self$max_backups){
       get("bq", envir = private)$prune(max_backups)
       self
     },
+
 
     set_file = function(
       file
@@ -2435,12 +2591,14 @@ AppenderFileRotating <- R6::R6Class(
       self
     },
 
+
     set_size = function(
       x
     ){
       private[[".size"]] <- x
       self
     },
+
 
     set_max_backups = function(
       x
@@ -2449,12 +2607,14 @@ AppenderFileRotating <- R6::R6Class(
       self
     },
 
+
     set_compression = function(
       x
     ){
       private[["bq"]]$set_compression(x)
       self
     },
+
 
     set_create_file = function(
       x
@@ -2464,13 +2624,46 @@ AppenderFileRotating <- R6::R6Class(
       self
     },
 
+
     set_backup_dir = function(
       x
     ){
       private$bq$set_backup_dir(x)
       self
+    },
+
+
+    format = function(
+      color = false,
+      ...
+    ){
+      res <- super$format(color = color, ...)
+
+      if (!color)
+        style_subtle <- identity
+
+      cs <- style_subtle(
+        sprintf("(current size: %s)", fmt_bytes(file.size(self$file)))
+      )
+
+      size <- {
+        if (is.infinite(self$size))
+          "Inf"
+        else if (is.numeric(self$size))
+          fmt_bytes(self$size)
+        else
+          self$size
+      }
+
+      size <- paste(size, cs)
+      c(
+        res,
+        sprintf("  backups: %s/%s", private$bq$n_backups, self$max_backups),
+        paste("  size:", size)
+      )
     }
   ),
+
 
   active = list(
     size = function() get(".size", private),
@@ -2481,6 +2674,7 @@ AppenderFileRotating <- R6::R6Class(
     backups     = function() get("bq", private)$backups,
     backup_dir  = function() get("bq", private)$backup_dir
   ),
+
 
   private = list(
     .size = NULL,
@@ -2599,6 +2793,27 @@ AppenderFileRotatingTime <- R6::R6Class(
     ){
       private$bq$set_cache_backups(x)
       self
+    },
+
+    format = function(
+      color = FALSE,
+      ...
+    ){
+      res <- super$format(color = color, ...)
+
+      if (!color)
+        style_subtle <- identity
+
+      lr <- private$bq$last_rotation
+      if (!is.null(lr))
+        lr <- style_subtle(sprintf(" (last rotation: %s)", format(lr)))
+      else
+        lr <- ""
+
+      c(
+        res,
+        sprintf("  age: %s%s", self$age, lr)
+      )
     }
   ),
 
@@ -2620,6 +2835,7 @@ AppenderFileRotatingTime <- R6::R6Class(
 
 
 # AppenderFileRotatingDate ----------------------------------------------------
+
 #' @export
 AppenderFileRotatingDate <- R6::R6Class(
   "AppenderFileRotatingDate",

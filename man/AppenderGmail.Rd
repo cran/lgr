@@ -2,7 +2,7 @@
 % Please edit documentation in R/Appender.R
 \name{AppenderGmail}
 \alias{AppenderGmail}
-\title{Send Log Emails via gmailr}
+\title{Send emails via gmailr}
 \description{
 Send mails via \code{\link[gmailr:send_message]{gmailr::send_message()}}. This
 Appender keeps an in-memory buffer like \link{AppenderBuffer}. If the buffer is
@@ -21,6 +21,7 @@ x$add_filter(filter, name = NULL)
 x$append(event)
 x$filter(event)
 x$flush()
+x$format(color = FALSE, ...)
 x$remove_filter(pos)
 x$set_bcc(x)
 x$set_buffer_size(x)
@@ -42,7 +43,9 @@ x$buffer_dt
 x$buffer_events
 x$buffer_size
 x$cc
+x$data
 x$destination
+x$dt
 x$filters
 x$flush_threshold
 x$from
