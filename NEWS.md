@@ -1,3 +1,9 @@
+# lgr 0.3.2
+
+* Added AppenderSyslog for logging to syslog via 
+  [rsyslog](https://github.com/atheriel/rsyslog) (thanks to atheriel)
+
+
 # lgr 0.3.1
 
   * Added `logger_tree()` which provides an overview of all registered loggers

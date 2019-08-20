@@ -1,7 +1,7 @@
 Type: Package
 Package: lgr
 Title: A Fully Featured Logging Framework
-Version: 0.3.1
+Version: 0.3.2
 Authors@R: 
     person(given = "Stefan",
            family = "Fleck",
@@ -23,8 +23,8 @@ Imports: R6 (>= 2.4.0)
 Suggests: cli, covr, crayon, data.table, DBI, desc, future,
         future.apply, glue, gmailr, jsonlite, knitr, RMariaDB,
         rmarkdown, rotor (>= 0.2.2), RPostgres, rprojroot, RPushbullet,
-        RSQLite, sendmailR, testthat, tibble, tools, utils, whoami,
-        yaml
+        RSQLite, rsyslog, sendmailR, testthat, tibble, tools, utils,
+        whoami, yaml
 VignetteBuilder: knitr
 Encoding: UTF-8
 LazyData: true
@@ -38,7 +38,7 @@ Collate: 'Filterable.R' 'utils-sfmisc.R' 'utils.R' 'Appender.R'
         'utils-formatting.R' 'utils-logging.R' 'utils-rd.R'
         'utils-rotor.R' 'utils-test.R'
 NeedsCompilation: no
-Packaged: 2019-06-13 11:52:27 UTC; fleck
+Packaged: 2019-08-20 13:07:48 UTC; hoelk
 Author: Stefan Fleck [aut, cre] (<https://orcid.org/0000-0003-3344-9851>)
 Repository: CRAN
-Date/Publication: 2019-06-13 13:10:08 UTC
+Date/Publication: 2019-08-20 15:10:02 UTC

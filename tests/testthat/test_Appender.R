@@ -524,3 +524,39 @@ test_that("AppenderBuffer: Custom $should_flush works", {
   # illegal filter
   expect_error(l$appenders[[1]]$set_should_flush(mean))
 })
+
+
+
+
+# AppenderSyslog ----------------------------------------------------------
+
+test_that("AppenderSyslog: to_syslog_level works", {
+  skip_if_not_installed("rsyslog")
+  app <- AppenderSyslog$new("myapp")
+
+  expect_identical(
+    app$.__enclos_env__$private$to_syslog_levels(c("fatal", "info", "error", "debug", "warn", "trace")),
+    c("CRITICAL", "INFO", "ERR", "DEBUG", "WARNING", "DEBUG")
+  )
+
+  expect_identical(
+    app$.__enclos_env__$private$to_syslog_levels(c("fatal", "info", "error", "debug", "warn", "trace")),
+    app$.__enclos_env__$private$to_syslog_levels(c(100, 400, 200, 500, 300, 600))
+  )
+})
+
+
+
+
+test_that("AppenderSyslog: logging to syslog works", {
+  skip_if_not_installed("rsyslog")
+  msg <- format(Sys.time())
+
+  lg <- get_logger("rsyslog/test")$set_propagate(FALSE)
+  on.exit(lg$config(NULL))
+  lg$add_appender(AppenderSyslog$new(), "syslog")
+  lg$info("A test message %s", msg)
+
+  log = system("cat /var/log/syslog | grep rsyslog/test", intern = TRUE)
+  expect_true(any(grepl(msg, log), fixed = TRUE))
+})
