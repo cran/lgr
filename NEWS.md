@@ -1,3 +1,10 @@
+# lgr 0.3.3
+
+* Fixed a performance regression when looking up the parent of a Logger. This
+  notably affected the performance of "do-nothing" logging (e.g. when a 
+  log message is discarded because it is below a loggers' threshold)
+  
+
 # lgr 0.3.2
 
 * Added AppenderSyslog for logging to syslog via 

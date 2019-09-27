@@ -267,7 +267,6 @@
 #'
 #' lg$config(cfg)
 #' lg$config(NULL)
-
 NULL
 
 
@@ -407,7 +406,8 @@ Logger <- R6::R6Class(
 
 
     fatal = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 100L)) return(invisible())
+      if (identical(get("threshold", envir = self) < 100L, TRUE))
+        return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -420,7 +420,8 @@ Logger <- R6::R6Class(
 
 
     error = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 200L)) return(invisible())
+      if (identical(get("threshold", envir = self) < 200L, TRUE))
+        return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -433,7 +434,8 @@ Logger <- R6::R6Class(
 
 
     warn = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 300L)) return(invisible())
+      if (identical(get("threshold", envir = self) < 300L, TRUE))
+        return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -446,7 +448,8 @@ Logger <- R6::R6Class(
 
 
     info = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 400L))  return(invisible())
+      if (identical(get("threshold", envir = self) < 400L, TRUE))
+        return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -459,7 +462,8 @@ Logger <- R6::R6Class(
 
 
     debug = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 500L))  return(invisible())
+      if (identical(get("threshold", envir = self) < 500L, TRUE))
+        return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -472,7 +476,8 @@ Logger <- R6::R6Class(
 
 
     trace = function(msg, ..., caller = get_caller(-8L)){
-      if (isTRUE(get("threshold", envir = self) < 600L))  return(invisible())
+      if (identical(get("threshold", envir = self) < 600L, TRUE))
+        return(invisible())
 
       get("log", envir = self)(
         msg = msg,
@@ -622,26 +627,34 @@ Logger <- R6::R6Class(
 
 
     spawn = function(name, ...){
-      get_logger(paste0(self$name, "/", name))
+      get_logger(c(private[[".name"]], name))
     }
   ),
 
+
   # active bindings ---------------------------------------------------------
   active = list(
-    name = function() private$.name,
+    name = function(){
+      paste(get(".name", envir = private), collapse = "/")
+    },
 
-    propagate = function() private$.propagate,
+    propagate = function(){
+      get(".propagate", envir = private)
+    },
 
-    last_event = function() private$.last_event,
+    last_event = function() {
+      get(".last_event", envir = private)
+    },
 
 
     ancestry = function(){
-      nm <- unlist(strsplit(self$name, "/"))
-      res <- vapply(
-        seq_along(nm),
-        function(i) get_logger(nm[1:i])[["propagate"]],
-        logical(1)
-      )
+      nm  <- get(".name", envir = private)
+      res <- logical(length(nm))
+
+      for (i in seq_along(nm)){
+        res[[i]] <- get("propagate", envir = get_logger(nm[1:i]))
+      }
+
       structure(
         setNames(res, nm),
         class = c("ancestry", class(res))
@@ -650,10 +663,12 @@ Logger <- R6::R6Class(
 
 
     parent = function() {
-      if (self$name == "root"){
+      nm <- get(".name", envir = private)
+
+      if (identical(nm, "root")){
         return(NULL)
       } else {
-        get_logger(names(self$ancestry[-length(self$ancestry)]))
+        get_logger(nm[-length(nm)])
       }
     },
 
@@ -661,7 +676,7 @@ Logger <- R6::R6Class(
     threshold = function() {
       res <- get(".threshold", envir = private)
       if (is.null(res)){
-        get("parent", envir = self)[["threshold"]]
+        get("threshold", envir = get("parent", envir = self))
       } else {
         res
       }
@@ -669,21 +684,29 @@ Logger <- R6::R6Class(
 
 
     inherited_appenders = function(){
-      if (self$propagate){
-        c(
-          get("parent", envir = self)$appenders,
-          get("parent", envir = self)$inherited_appenders
+      if (get(".propagate", envir = private)){
+        p <- get("parent", envir = self)
+        if (is.null(p))
+          return(NULL)
+
+        unlist(
+          mget(c("appenders", "inherited_appenders"), envir = p),
+          recursive = FALSE
         )
       } else {
         NULL
       }
     },
 
-    exception_handler = function() {private$.exception_handler},
+
+    exception_handler = function() {
+      get(".exception_handler", envir = private)
+    },
 
 
-    appenders = function() {private$.appenders}
-
+    appenders = function() {
+      get(".appenders", envir = private)
+    }
   ),
 
 
@@ -691,7 +714,7 @@ Logger <- R6::R6Class(
   private = list(
     set_name = function(x){
       assert(is_scalar_character(x))
-      private$.name <- x
+      private$.name <- unlist(strsplit(x, "/"))
       invisible(self)
     },
 
@@ -731,7 +754,8 @@ LoggerGlue <- R6::R6Class(
   public = list(
 
     fatal = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 100L))  return(invisible())
+      if (identical(get("threshold", envir = self) < 100L, TRUE))
+        return(invisible())
 
       force(.envir)
       get("log", envir = self)(
@@ -744,7 +768,8 @@ LoggerGlue <- R6::R6Class(
     },
 
     error = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 200L))  return(invisible())
+      if (identical(get("threshold", envir = self) < 200L, TRUE))
+        return(invisible())
 
       get("log", envir = self)(
         ...,
@@ -756,7 +781,8 @@ LoggerGlue <- R6::R6Class(
     },
 
     warn = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 300L))  return(invisible())
+      if (identical(get("threshold", envir = self) < 300L, TRUE))
+        return(invisible())
 
       get("log", envir = self)(
         ...,
@@ -768,7 +794,8 @@ LoggerGlue <- R6::R6Class(
     },
 
     info = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 400L))  return(invisible())
+      if (identical(get("threshold", envir = self) < 400L, TRUE))
+        return(invisible())
 
       get("log", envir = self)(
         ...,
@@ -780,7 +807,8 @@ LoggerGlue <- R6::R6Class(
     },
 
     debug = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 500L))  return(invisible())
+      if (identical(get("threshold", envir = self) < 500L, TRUE))
+        return(invisible())
 
       force(.envir)
       get("log", envir = self)(
@@ -793,7 +821,8 @@ LoggerGlue <- R6::R6Class(
     },
 
     trace = function(..., caller = get_caller(-8L), .envir = parent.frame()){
-      if (isTRUE(get("threshold", envir = self) < 600L))  return(invisible())
+      if (identical(get("threshold", envir = self) < 600L, TRUE))
+        return(invisible())
 
       force(.envir)
       get("log", envir = self)(
@@ -812,7 +841,8 @@ LoggerGlue <- R6::R6Class(
       caller = get_caller(-7),
       .envir = parent.frame()
     ){
-      if (identical(get("threshold", envir = self), 0L))  return(invisible())
+      if (identical(get("threshold", envir = self), 0L))
+        return(invisible())
 
       force(.envir)
       tryCatch({
@@ -882,6 +912,11 @@ LoggerGlue <- R6::R6Class(
       },
       error = get("handle_exception", envir = self)
       )
+    },
+
+
+    spawn = function(name, ...){
+      get_logger_glue(c(private[[".name"]], name))
     }
   )
 )
