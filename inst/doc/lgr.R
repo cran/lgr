@@ -1,4 +1,4 @@
-## ----setup, include = FALSE----------------------------------------------
+## ----setup, include = FALSE---------------------------------------------------
 library(lgr)
 
 knitr::opts_chunk$set(
@@ -6,20 +6,20 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # the root logger is called "lgr"
 lgr$info("Vampire stories are generally located in Styria.")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lgr$error("Vampires generally arrive in carriages drawn by %i black horses.", 2)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 tf <- tempfile(fileext = ".info")
 lgr$add_appender(AppenderFile$new(tf), name = "file")
 lgr$info("You must think I am joking")
 readLines(tf)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lgr$appenders$file$set_layout(LayoutFormat$new(timestamp_fmt = "%B %d %T"))
 lgr$info("No, I am quite serious")
 readLines(tf)
@@ -27,7 +27,7 @@ readLines(tf)
 #cleanup
 unlink(tf)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # cleanup behind the old Appender
 unlink(tf)  
 lgr$remove_appender("file")
@@ -36,13 +36,13 @@ lgr$remove_appender("file")
 lgr$add_appender(AppenderJson$new(tf), name = "json")
 lgr$info("We lived in Styria")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 cat(readLines(tf))
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 read_json_lines(tf)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # show is a method and takes some extra arguments, like maximum number of lines
 # to show
 lgr$appenders$json$show()
@@ -51,7 +51,7 @@ lgr$appenders$json$show()
 # rather than a method, so no extra arguments are possible
 lgr$appenders$json$data  
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # The default console appender displays custom fields as pseudo-json after the message
 lgr$info("Styria has", poultry = c("capons", "turkeys"))
 
@@ -59,11 +59,11 @@ lgr$info("Styria has", poultry = c("capons", "turkeys"))
 read_json_lines(tf)
 read_json_lines(tf)$poultry[[2]]  # works because poultry is a list column
 
-## ----echo = FALSE--------------------------------------------------------
+## ----echo = FALSE-------------------------------------------------------------
 lgr$remove_appender("json")
 unlink(tf)
 
-## ---- echo = FALSE-------------------------------------------------------
+## ---- echo = FALSE------------------------------------------------------------
 ll <- data.frame(
   `Level` = c(0, seq(100, 600, by = 100), NA),
   `Name` = c("off", "fatal", "error", "warn", "info", "debug", "trace", "all"),
@@ -81,22 +81,22 @@ ll <- data.frame(
 
 knitr::kable(ll)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lgr$fatal("This is an important message about %s going wrong", "->something<-")
 lgr$trace("Trace messages are still hidden")
 lgr$set_threshold("trace")
 lgr$trace("Unless we lower the threshold")
 
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lgr$info("The sky was the color of %s, tuned to a dead chanel", "television")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lgr$info("Vampire stories are generally located in Styria")
 lgr$last_event  # a summary output of the event
 lgr$last_event$values  # all values stored in the event as a list
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # bad
 lgr$info("Processing track '%s' with %s waypoints", "track.gpx", 32)
 
@@ -107,11 +107,11 @@ lgr$info("Processing track", file = "track.gpx", waypoints = 32)
 lgr$appenders$json$data
 
 
-## ----echo = FALSE--------------------------------------------------------
+## ----echo = FALSE-------------------------------------------------------------
 lgr$remove_appender("json")
 unlink(tf)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 f1 <- function(event) { grepl("bird", event$msg) }
 lgr$set_filters(list(f1))
 
@@ -121,7 +121,7 @@ lgr$info("no! is it a bird?")
 # since this is not a very useful filter, we better remove it again
 lgr$set_filters(NULL)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 tf <- tempfile()
 
 # Add a new appender to a logger. We don't have to supply a name, but that
@@ -142,7 +142,7 @@ readLines(tf)
 lgr$remove_appender("file")
 unlink(tf)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # install.packages("glue")
 
 lg <- get_logger_glue("glue/logger")
@@ -154,35 +154,35 @@ lg$info(
 )
 
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lg$info("For more info on glue see {website}", website = "https://glue.tidyverse.org/")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lg$info("Glue is available from {.cran}", .cran = "https://CRAN.R-project.org/package=glue")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lg <- get_logger("test")
 lg$config(NULL)  # resets logger to unconfigured state
 lg$set_threshold("fatal")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lg$
   set_threshold("info")$
   set_appenders(AppenderConsole$new(threshold = "info"))$
   set_propagate(FALSE)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lg$config(list(
   threshold = "info",
   propagate = FALSE,
   appenders = AppenderConsole$new(threshold = "info")
 ))
 
-## ----eval = FALSE--------------------------------------------------------
+## ----eval = FALSE-------------------------------------------------------------
 #  lg$config("path/to/config.yaml")
 #  lg$config("path/to/config.json")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # Via YAML
 cfg <- "
   Logger:
@@ -194,7 +194,7 @@ cfg <- "
 "
 lg$config(cfg)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lg <- get_logger("test")
 lg$set_appenders(list(cons = AppenderConsole$new()))
 lg$set_propagate(FALSE)
@@ -204,7 +204,7 @@ lg$info("the default format")
 lg$appenders$cons$layout$set_fmt("%L (%n) [%t] %c(): !! %m !!")
 lg$info("A more involved custom format")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # install.packages("glue")
 library(glue)
 lg$appenders$cons$set_layout(LayoutGlue$new(
@@ -212,7 +212,7 @@ lg$appenders$cons$set_layout(LayoutGlue$new(
 ))
 lg$info("with glue")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # install.packages("jsonlite")
 tf <- tempfile()
 
@@ -226,28 +226,28 @@ lg$info("supports custom", numbers = 1:3)
 lg$info("log fields", use = "JSON")
 
 
-## ----eval = FALSE--------------------------------------------------------
+## ----eval = FALSE-------------------------------------------------------------
 #  lg$appenders$json$data
 #  # same as
 #  read_json_lines(tf)
 
-## ----echo = FALSE--------------------------------------------------------
+## ----echo = FALSE-------------------------------------------------------------
 lg$appenders$json$data
 
-## ----eval = FALSE--------------------------------------------------------
+## ----eval = FALSE-------------------------------------------------------------
 #  lg$appenders$json$show()
 #  # same as
 #  cat(readLines(tf), sep = "\n")
 
-## ----echo = FALSE--------------------------------------------------------
+## ----echo = FALSE-------------------------------------------------------------
 lg$appenders$json$show()
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # cleanup
 lg$config(NULL)
 unlink(tf)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # install.packages("rotor")
 tf <- tempfile(fileext = ".log")
 
@@ -271,33 +271,33 @@ lg$appenders$rotating$backups
 #cleanup
 unlink(tf)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # The logger name should be the same as the package name
 tf <- tempfile()
 lg <- get_logger("mypackage")
 lg$add_appender(AppenderFile$new(tf))  
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 print(lg)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lg$info("A test message for lg")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lg$set_propagate(FALSE)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 print(lg)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lg$info("Nothing to see here")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # cleanup
 lg$config(NULL)
 unlink(tf)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 lg <- get_logger("buffer")
 
 lg$
@@ -319,7 +319,7 @@ for (nm in month.name[1:8]) lg$debug("%s", nm)
 # An event of level 'error' or 'fatal' triggers flushing of the buffer
 lg$error("But the days grow short when you reach September")
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # install.packages("RSQLite")
 lg <- get_logger("db_logger")
 lg$
@@ -340,7 +340,7 @@ lg$appenders$db$show()
 lg$info("Now as the buffer is rotated, all events are output to the db")
 lg$appenders$db$show()
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # setup an example function
 clean   <- function() lgr$info("cleaning data")
 process <- function() lgr$info("processing data")
@@ -352,13 +352,13 @@ analyze <- function(){
   output()
 }
 
-## ----eval = FALSE--------------------------------------------------------
+## ----eval = FALSE-------------------------------------------------------------
 #  with_log_value(
 #    list(dataset_id = "dataset1"),
 #    analyze()
 #  )
 
-## ----eval = FALSE--------------------------------------------------------
+## ----eval = FALSE-------------------------------------------------------------
 #  analyze <- function(id = "dataset1"){
 #    lgr$add_filter(FilterInject$new(dataset_id = id), name = "inject")
 #    on.exit(lgr$remove_filter("inject"))
@@ -369,19 +369,19 @@ analyze <- function(){
 #  }
 #  analyze()
 
-## ---- echo = FALSE-------------------------------------------------------
+## ---- echo = FALSE------------------------------------------------------------
 with_log_value(
   list(dataset_id = "dataset1"), 
   analyze()
 )
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 without_logging({
   lgr$warn("Oh Yeah?")
   lgr$fatal("Oh No")
 })
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 # mypackage/R/mypackage-package.R
 .onLoad <- function(...){
   assign(
