@@ -1,58 +1,30 @@
 #' Abstract Class for Filterables
 #'
+#' @description Superclass for classes that have a `$filter()` method such as
+#' [Appenders] and [Loggers]. See [EventFilter] for details.
+#'
 #' @template abstract_class
 #'
-#' @description
-#' Superclass for classes that have a `filter()` method such as [Appenders] and
-#' [Loggers]. This class is only exported for package developers that want to
-#' extend it.
-#' @name Filterable
-#' @section Fields:
-#'
-#' \describe{
-#'   \item{`filters`, `set_filters(filters)`}{a `list` that may contain
-#'     `functions` or any \R object with a `filter()` method. These functions
-#'     must have exactly one argument: `event` which will get passed the
-#'     LogEvent when the Filterable's `filter()` method is invoked.
-#'     If all of these functions evaluate to `TRUE` the LogEvent is passed on.
-#'     Since LogEvents have reference semantics, filters can also be abused to
-#'     modify them before they are passed on. Look at the source code of
-#'     [with_log_level()] or [with_log_value()] for examples.
-#'   }
-#' }
-#'
-#' @section Methods:
-#' \describe{
-#'   \item{`filter(event)`}{Determine whether the LogEvent `x` should be passed
-#'     on to Appenders (`TRUE`) or not (`FALSE`). See also the active binding
-#'     `filters`}
-#'    \item{`add_filter(filter, name = NULL)`, `remove_filter(pos)`}{
-#'      Add or remove a filter. When adding a filter an optional `name` can
-#'      be specified. `remove_filter()` can remove by position or name (if one
-#'      was specified)
-#'    }
-#' }
-#'
-#'
-#' @keywords internal
-NULL
-
-
-
-
-#'  @rdname Filterable
-#'  @export
+#' @export
 Filterable <- R6::R6Class(
   "Filterable",
   cloneable = FALSE,
 
   public = list(
+
+    #' @description Determine whether the LogEvent `x` should be passed on to
+    #'   Appenders (`TRUE`) or not (`FALSE`). See also the active binding
+    #'   `filters`.
+    #'
+    #' @param event a [LogEvent]
     filter = function(event){
       for (f in get(".filters", private)) {
 
+        # we can assume f() is a valid Filter since it is aleady verrified by
+        # $set_filters()
         if (is.function(f)){
           r <- f(event)
-        } else if (is_filter(f)){
+        } else {
           r <- f[["filter"]](event)
         }
 
@@ -71,6 +43,18 @@ Filterable <- R6::R6Class(
       TRUE
     },
 
+    #' @description Attach a filter
+    #' @param filter
+    #' * a function with the single argument `event` that returns `TRUE`
+    #'   or `FALSE`;
+    #' * an [EventFilter] [R6::R6] object; or
+    #' * any \R object with a `$filter()` method.
+    #'
+    #'  If a Filter returns a non-`FALSE` value, will be interpreted as `TRUE`
+    #'  (= no filtering takes place) and a warning will be thrown.
+    #'
+    #' @param name `character` scalar or `NULL`. An optional
+    #' name which makes it easier to access (or remove) the filter
     add_filter = function(filter, name = NULL){
       assert_filter(filter)
       assert(is.null(name) || is_scalar_character(name))
@@ -79,6 +63,10 @@ Filterable <- R6::R6Class(
       invisible(self)
     },
 
+
+    #' @description Remove a filter
+    #' @param pos `character` or `integer` scalar. The name or index of the
+    #' Filter to be removed.
     remove_filter = function(pos){
       if (is.numeric(pos)) sort(pos, decreasing = TRUE)
       for (p in pos){
@@ -88,6 +76,11 @@ Filterable <- R6::R6Class(
     },
 
 
+    #' @description Set or replace (all) Filters of parent object. See
+    #' [EventFilter] for how Filters work.
+    #'
+    #' @param filters a `list` (named or unnamed) of [EventFilters][EventFilter]
+    #'   or predicate functions. See [is_filter()].
     set_filters = function(filters){
       filters <- standardize_filters_list(filters)
       private[[".filters"]] <- filters
@@ -96,6 +89,7 @@ Filterable <- R6::R6Class(
   ),
 
   active = list(
+    #' @field filters a `list` of all attached Filters.
     filters = function(){
       get(".filters", private)
     }
@@ -105,17 +99,3 @@ Filterable <- R6::R6Class(
     .filters = list()
   )
 )
-
-
-
-
-assert_filter <- function(x){
-  if (is_filter(x))
-    TRUE
-  else
-    stop(
-      "`", deparse(substitute(x)), "`", "
-      must be a function with the argument `event`",
-      call. = FALSE
-    )
-}

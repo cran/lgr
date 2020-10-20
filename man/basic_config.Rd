@@ -4,17 +4,23 @@
 \alias{basic_config}
 \title{Basic Setup for the Logging System}
 \usage{
-basic_config(file = NULL, fmt = "\%L [\%t] \%m",
-  timestamp_fmt = "\%Y-\%m-\%d \%H:\%M:\%OS3", threshold = "info",
-  appenders = NULL, console = if (is.null(appenders)) "all" else FALSE,
+basic_config(
+  file = NULL,
+  fmt = "\%L [\%t] \%m",
+  timestamp_fmt = "\%Y-\%m-\%d \%H:\%M:\%OS3",
+  threshold = "info",
+  appenders = NULL,
+  console = if (is.null(appenders)) "all" else FALSE,
   console_fmt = "\%L [\%t] \%m \%f",
-  console_timestamp_fmt = "\%H:\%M:\%OS3", memory = FALSE)
+  console_timestamp_fmt = "\%H:\%M:\%OS3",
+  memory = FALSE
+)
 }
 \arguments{
 \item{file}{\code{character} scalar: If not \code{NULL} a \link{AppenderFile} will be
 created that logs to this file. If the filename ends in \code{.jsonl}, the
-Appender will be set up to use the \href{http://jsonlines.org/}{JSON Lines} format instead of plain text (see
-\link{AppenderFile} and \link{AppenderJson}).}
+Appender will be set up to use the \href{https://jsonlines.org/}{JSON Lines}
+format instead of plain text (see \link{AppenderFile} and \link{AppenderJson}).}
 
 \item{fmt}{\code{character} scalar: Format to use if \code{file} is supplied and not a
 \code{.jsonl} file. If \code{NULL} it defaults to \code{"\%L [\%t] \%m"} (see
@@ -42,7 +48,7 @@ the \code{root} Logger (lgr)
 }
 \description{
 A quick and easy way to configure the root logger. This is less powerful
-then using \link[=Logger]{lgr$config() or lgr$set_*()}, but reduces the
+then using \code{lgr$config()} or \verb{lgr$set_*()} (see \link{Logger}), but reduces the
 most common configurations to a single line of code.
 }
 \examples{

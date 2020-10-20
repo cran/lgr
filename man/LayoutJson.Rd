@@ -4,53 +4,12 @@
 \alias{LayoutJson}
 \title{Format LogEvents as JSON}
 \description{
-Format a LogEvent as JSON
+A format for formatting LogEvents as
+\href{https://jsonlines.org/}{jsonlines} log files. This provides a
+nice balance between human- an machine-readability.
 }
-\section{Usage}{
-\preformatted{
-x <- LayoutJson$new(toJSON_args = list(auto_unbox = TRUE))
-
-x$clone(deep = FALSE)
-x$format_event(event)
-x$set_toJSON_args(x)
-x$toString()
-
-x$toJSON_args
-
-}
-}
-
-\section{Creating a New Layout}{
-
-
-
-
-Layouts are instantiated with \code{<LayoutSubclass>$new()}. For a description of
-the arguments to this function please refer to the Fields section.
-}
-
-\section{Fields}{
-
-\describe{
-\item{\code{toJSON_args}, \code{set_toJSON_args()}}{a list of values passed on to
-\code{\link[jsonlite:toJSON]{jsonlite::toJSON()}}
-}
-}
-}
-
-\section{Methods}{
-
-
-
-
-\describe{
-\item{\code{format_event(event)}}{format a \link{LogEvent}}
-}
-}
-
 \examples{
 # setup a dummy LogEvent
-
 event <- LogEvent$new(
   logger = Logger$new("dummy logger"),
   level = 200,
@@ -63,13 +22,148 @@ event <- LogEvent$new(
 # Default settings show all event fals
 lo <- LayoutJson$new()
 lo$format_event(event)
-
 }
 \seealso{
-\code{\link[=read_json_lines]{read_json_lines()}}, \url{http://jsonlines.org/}
+\code{\link[=read_json_lines]{read_json_lines()}}, \url{https://jsonlines.org/}
 
-Other Layouts: \code{\link{LayoutDbi}},
-  \code{\link{LayoutFormat}}, \code{\link{LayoutGlue}},
-  \code{\link{Layout}}
+Other Layouts: 
+\code{\link{LayoutFormat}},
+\code{\link{LayoutGlue}},
+\code{\link{Layout}}
 }
 \concept{Layouts}
+\section{Super class}{
+\code{\link[lgr:Layout]{lgr::Layout}} -> \code{LayoutJson}
+}
+\section{Active bindings}{
+\if{html}{\out{<div class="r6-active-bindings">}}
+\describe{
+\item{\code{toJSON_args}}{a list of values passed on to \code{\link[jsonlite:fromJSON]{jsonlite::toJSON()}}}
+
+\item{\code{timestamp_fmt}}{Used by  \verb{$format_event()} to format timestamps.}
+}
+\if{html}{\out{</div>}}
+}
+\section{Methods}{
+\subsection{Public methods}{
+\itemize{
+\item \href{#method-new}{\code{LayoutJson$new()}}
+\item \href{#method-format_event}{\code{LayoutJson$format_event()}}
+\item \href{#method-set_toJSON_args}{\code{LayoutJson$set_toJSON_args()}}
+\item \href{#method-set_timestamp_fmt}{\code{LayoutJson$set_timestamp_fmt()}}
+\item \href{#method-toString}{\code{LayoutJson$toString()}}
+\item \href{#method-parse}{\code{LayoutJson$parse()}}
+\item \href{#method-read}{\code{LayoutJson$read()}}
+\item \href{#method-clone}{\code{LayoutJson$clone()}}
+}
+}
+\if{html}{
+\out{<details open ><summary>Inherited methods</summary>}
+\itemize{
+}
+\out{</details>}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
+\subsection{Method \code{new()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{LayoutJson$new(toJSON_args = list(auto_unbox = TRUE), timestamp_fmt = NULL)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-format_event"></a>}}
+\if{latex}{\out{\hypertarget{method-format_event}{}}}
+\subsection{Method \code{format_event()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{LayoutJson$format_event(event)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_toJSON_args"></a>}}
+\if{latex}{\out{\hypertarget{method-set_toJSON_args}{}}}
+\subsection{Method \code{set_toJSON_args()}}{
+Set arguments to pass on to \code{\link[jsonlite:fromJSON]{jsonlite::toJSON()}}
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{LayoutJson$set_toJSON_args(x)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{x}}{a named \code{list}}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_timestamp_fmt"></a>}}
+\if{latex}{\out{\hypertarget{method-set_timestamp_fmt}{}}}
+\subsection{Method \code{set_timestamp_fmt()}}{
+Set a format that this Layout will apply to timestamps.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{LayoutJson$set_timestamp_fmt(x)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{x}}{\itemize{
+\item \code{NULL} (the default): formatting of the timestamp is left to
+\code{\link[jsonlite:fromJSON]{jsonlite::toJSON()}},
+\item a \code{character} scalar as for \code{\link[=format.POSIXct]{format.POSIXct()}}, or
+\item a \code{function} that returns a vector of the same length as its
+(\link{POSIXct}) input. The returned vector can be of any type
+supported by \code{\link[jsonlite:fromJSON]{jsonlite::toJSON()}}, but should usually be \code{character}.
+}}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-toString"></a>}}
+\if{latex}{\out{\hypertarget{method-toString}{}}}
+\subsection{Method \code{toString()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{LayoutJson$toString()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-parse"></a>}}
+\if{latex}{\out{\hypertarget{method-parse}{}}}
+\subsection{Method \code{parse()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{LayoutJson$parse(file)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-read"></a>}}
+\if{latex}{\out{\hypertarget{method-read}{}}}
+\subsection{Method \code{read()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{LayoutJson$read(file, threshold = NA_integer_, n = 20L)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-clone}{}}}
+\subsection{Method \code{clone()}}{
+The objects of this class are cloneable with this method.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{LayoutJson$clone(deep = FALSE)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{deep}}{Whether to make a deep clone.}
+}
+\if{html}{\out{</div>}}
+}
+}
+}

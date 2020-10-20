@@ -4,154 +4,241 @@
 \alias{AppenderMemory}
 \title{Abstract class for logging to memory buffers}
 \description{
-\strong{Abstract classes} are exported for package developers that want to extend
-them, they cannot be instantiated directly.
+\strong{NOTE}: This is an \emph{abstract class}. Abstract classes cannot be instantiated
+directly, but are exported for package developers that want to extend lgr -
+for example by creating their own \link[=Appender]{Appenders} or \link[=Layout]{Layouts}.
+Please refer to the \emph{see also} section for actual implementations of this
+class.
 
 AppenderMemory is extended by Appenders that retain an in-memory event
-buffer, such as \link{AppenderBuffer} and \link{AppenderPushbullet}.
+buffer, such as \link{AppenderBuffer} and \code{AppenderPushbullet} from the
+\href{https://github.com/s-fleck/lgrExtra}{lgrExtra} package.
 }
-\section{Usage}{
-\preformatted{
-x <- AppenderMemory$new(layout = Layout$new(), threshold = NA_integer_)
-
-x$add_filter(filter, name = NULL)
-x$append(event)
-x$filter(event)
-x$flush()
-x$format(color = FALSE, ...)
-x$remove_filter(pos)
-x$set_buffer_size(x)
-x$set_filters(filters)
-x$set_flush_on_exit(x)
-x$set_flush_on_rotate(x)
-x$set_flush_threshold(level)
-x$set_layout(layout)
-x$set_should_flush(x)
-x$set_threshold(level)
-x$show(threshold = NA_integer_, n = 20L)
-
-x$buffer_df
-x$buffer_dt
-x$buffer_events
-x$buffer_size
-x$data
-x$destination
-x$dt
-x$filters
-x$flush_on_exit
-x$flush_on_rotate
-x$flush_threshold
-x$layout
-x$should_flush
-x$threshold
-
-}
-}
-
-\section{Fields}{
-
-
-\describe{
-\item{\code{buffer_size, set_buffer_size(x)}}{\code{integer} scalar \code{>= 0} Number of
-\link{LogEvents} to buffer.
-}
-
-\item{\code{buffer_events}, \code{buffer_df}, \code{buffer_dt}}{
-The contents of the buffer as a \code{list} of \link[=LogEvent]{LogEvents}, a
-\code{data.frame} or a \code{data.table}.
-}
-
-\item{\code{flush_threshold}, \code{set_flush_threshold()}}{\code{integer} or \code{character}
-\link[=log_level]{log level}. Minimum event level that will trigger flushing of
-the buffer. This behaviour is implemented through \code{should_flush()},
-and you can modify that function for different behaviour.
-}
-\item{\code{should_flush(event)}, \code{set_should_flush(x)}}{
-A function with exactly one arguments: \code{event}.
-If the function returns \code{TRUE}, flushing of the buffer
-is triggered. Defaults to flushing if an event of level \code{error}
-or higher is registered.}
-}
-
-
-
-\describe{
-\item{\code{dt}}{Get the log recorded by this \code{Appender} as a \code{data.table}
-with a maximum of \code{buffer_size} rows}
-}
-
-
-
-\describe{
-\item{\code{data}}{Get the log recorded by this \code{Appender} as a \code{data.frame}}
-}
-
-
-
-\describe{
-\item{\code{threshold}, \code{set_threshold(level)}}{\code{character} or \code{integer} scalar.
-The minimum log level that triggers this logger. See \link{log_levels}}
-\item{\code{layout}, \code{set_layout(layout)}}{a \code{Layout} that will be used for
-formatting the \code{LogEvents} passed to this Appender}
-\item{\code{destination}}{The output destination of the \code{Appender} in
-human-readable form (mainly for print output)}
-}
-
-
-
-\describe{
-\item{\code{filters}, \code{set_filters(filters)}}{a \code{list} that may contain
-\code{functions} or any \R object with a \code{filter()} method. These functions
-must have exactly one argument: \code{event} which will get passed the
-LogEvent when the Filterable's \code{filter()} method is invoked.
-If all of these functions evaluate to \code{TRUE} the LogEvent is passed on.
-Since LogEvents have reference semantics, filters can also be abused to
-modify them before they are passed on. Look at the source code of
-\code{\link[=with_log_level]{with_log_level()}} or \code{\link[=with_log_value]{with_log_value()}} for examples.
-}
-}
-}
-
-\section{Methods}{
-
-
-\describe{
-\item{\code{flush()}}{Manually trigger flushing of the buffer}
-}
-
-
-\describe{
-\item{\code{show(n, threshold)}}{Show the last \code{n} log entries with a log level
-bellow \code{threshold}. The log entries will be formatted for console output
-via this Appenders \link{Layout}}
-}
-
-
-\describe{
-\item{\code{append(event)}}{Tell the Appender to process a \link{LogEvent} \code{event}.
-This method is usually not called by the user, but invoked by a
-\link{Logger}
-}
-}
-
-
-\describe{
-\item{\code{filter(event)}}{Determine whether the LogEvent \code{x} should be passed
-on to Appenders (\code{TRUE}) or not (\code{FALSE}). See also the active binding
-\code{filters}}
-\item{\code{add_filter(filter, name = NULL)}, \code{remove_filter(pos)}}{
-Add or remove a filter. When adding a filter an optional \code{name} can
-be specified. \code{remove_filter()} can remove by position or name (if one
-was specified)
-}
-}
-}
-
 \seealso{
 \link{LayoutFormat}
 
-Other abstract classes: \code{\link{AppenderDigest}},
-  \code{\link{AppenderMail}}, \code{\link{AppenderTable}},
-  \code{\link{Filterable}}
+Other abstract classes: 
+\code{\link{AppenderTable}},
+\code{\link{Appender}},
+\code{\link{Filterable}}
 }
 \concept{abstract classes}
+\section{Super classes}{
+\code{\link[lgr:Filterable]{lgr::Filterable}} -> \code{\link[lgr:Appender]{lgr::Appender}} -> \code{AppenderMemory}
+}
+\section{Active bindings}{
+\if{html}{\out{<div class="r6-active-bindings">}}
+\describe{
+\item{\code{flush_on_exit}}{A \code{logical} scalar. Should the buffer be flushed if
+the Appender is destroyed (e.g. because the \R session is terminated)?}
+
+\item{\code{flush_on_rotate}}{A \code{logical} scalar. Should the buffer be flushed when it is
+rotated because \verb{$buffer_size} is exceeded?}
+
+\item{\code{should_flush}}{A \code{function} with exactly one arguments: \code{event}.
+\verb{$append()} calls this function internally on the current \link{LogEvent}
+and flushes the buffer if it evaluates to \code{TRUE}.}
+
+\item{\code{buffer_size}}{\code{integer} scalar \verb{>= 0}. Maximum number of \link{LogEvents}
+to buffer.}
+
+\item{\code{flush_threshold}}{A \code{numeric} or \code{character} threshold. \link{LogEvents}
+with a \link{log_level} equal to or lower than this threshold trigger
+flushing the buffer.}
+
+\item{\code{buffer_events}}{A \code{list} of \link{LogEvents}. Contents of the buffer.}
+
+\item{\code{buffer_events}}{A \code{data.frame}. Contents of the buffer converted
+to a \code{data.frame}.}
+
+\item{\code{buffer_events}}{A \code{data.frame}. Contents of the buffer converted
+to a \code{data.table}.}
+}
+\if{html}{\out{</div>}}
+}
+\section{Methods}{
+\subsection{Public methods}{
+\itemize{
+\item \href{#method-new}{\code{AppenderMemory$new()}}
+\item \href{#method-append}{\code{AppenderMemory$append()}}
+\item \href{#method-flush}{\code{AppenderMemory$flush()}}
+\item \href{#method-clear}{\code{AppenderMemory$clear()}}
+\item \href{#method-set_buffer_size}{\code{AppenderMemory$set_buffer_size()}}
+\item \href{#method-set_should_flush}{\code{AppenderMemory$set_should_flush()}}
+\item \href{#method-set_flush_on_exit}{\code{AppenderMemory$set_flush_on_exit()}}
+\item \href{#method-set_flush_on_rotate}{\code{AppenderMemory$set_flush_on_rotate()}}
+\item \href{#method-set_flush_threshold}{\code{AppenderMemory$set_flush_threshold()}}
+\item \href{#method-show}{\code{AppenderMemory$show()}}
+\item \href{#method-format}{\code{AppenderMemory$format()}}
+}
+}
+\if{html}{
+\out{<details ><summary>Inherited methods</summary>}
+\itemize{
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="add_filter">}\href{../../lgr/html/Filterable.html#method-add_filter}{\code{lgr::Filterable$add_filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="filter">}\href{../../lgr/html/Filterable.html#method-filter}{\code{lgr::Filterable$filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="remove_filter">}\href{../../lgr/html/Filterable.html#method-remove_filter}{\code{lgr::Filterable$remove_filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="set_filters">}\href{../../lgr/html/Filterable.html#method-set_filters}{\code{lgr::Filterable$set_filters()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Appender" data-id="set_layout">}\href{../../lgr/html/Appender.html#method-set_layout}{\code{lgr::Appender$set_layout()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Appender" data-id="set_threshold">}\href{../../lgr/html/Appender.html#method-set_threshold}{\code{lgr::Appender$set_threshold()}}\out{</span>}
+}
+\out{</details>}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
+\subsection{Method \code{new()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderMemory$new(...)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-append"></a>}}
+\if{latex}{\out{\hypertarget{method-append}{}}}
+\subsection{Method \code{append()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderMemory$append(event)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-flush"></a>}}
+\if{latex}{\out{\hypertarget{method-flush}{}}}
+\subsection{Method \code{flush()}}{
+Sends the buffer's contents to all attached Appenders and
+then clears the Buffer
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderMemory$flush()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-clear"></a>}}
+\if{latex}{\out{\hypertarget{method-clear}{}}}
+\subsection{Method \code{clear()}}{
+Clears the buffer, discarding all buffered Events
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderMemory$clear()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_buffer_size"></a>}}
+\if{latex}{\out{\hypertarget{method-set_buffer_size}{}}}
+\subsection{Method \code{set_buffer_size()}}{
+Set the maximum size of the buffer
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderMemory$set_buffer_size(x)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{x}}{an \code{integer} scalar \verb{>= 0}. Number of \link{LogEvents} to buffer.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_should_flush"></a>}}
+\if{latex}{\out{\hypertarget{method-set_should_flush}{}}}
+\subsection{Method \code{set_should_flush()}}{
+Set function that can trigger flushing the buffer
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderMemory$set_should_flush(x)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{x}}{A \code{function} with the single argument \code{event}. Setting \code{x} to
+\code{NULL} is a shortcut for \code{function(event) FALSE}. See active bindings.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_flush_on_exit"></a>}}
+\if{latex}{\out{\hypertarget{method-set_flush_on_exit}{}}}
+\subsection{Method \code{set_flush_on_exit()}}{
+Should the buffer be flushed when the Appender is destroyed?
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderMemory$set_flush_on_exit(x)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{x}}{A \code{logical} scalar. See active bindings.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_flush_on_rotate"></a>}}
+\if{latex}{\out{\hypertarget{method-set_flush_on_rotate}{}}}
+\subsection{Method \code{set_flush_on_rotate()}}{
+Should the buffer be flushed if \code{buffer_size} is exceeded?
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderMemory$set_flush_on_rotate(x)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{x}}{A \code{logical} scalar. See active bindings.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_flush_threshold"></a>}}
+\if{latex}{\out{\hypertarget{method-set_flush_threshold}{}}}
+\subsection{Method \code{set_flush_threshold()}}{
+Set threshold that triggers flushing
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderMemory$set_flush_threshold(level)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{level}}{A \code{numeric} or \code{character} \link[=log_level]{threshold}. See
+active bindings.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-show"></a>}}
+\if{latex}{\out{\hypertarget{method-show}{}}}
+\subsection{Method \code{show()}}{
+Display the contents of the log table. Relies on the
+\verb{$format_event} method of the \link{Layout} attached to this Appender.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderMemory$show(threshold = NA_integer_, n = 20L)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{threshold}}{\code{character} or \code{integer} scalar. The minimum log level
+that should be displayed.}
+
+\item{\code{n}}{\code{integer} scalar. Show only the last \code{n} log entries that match
+\code{threshold}.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-format"></a>}}
+\if{latex}{\out{\hypertarget{method-format}{}}}
+\subsection{Method \code{format()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderMemory$format(color = FALSE, ...)}\if{html}{\out{</div>}}
+}
+
+}
+}

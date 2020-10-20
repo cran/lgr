@@ -12,12 +12,20 @@ teardown({
 })
 
 
+assert_supported_rotor_version <- function(){  # TODO: change to throwing an error once rotor 0.3.0 is on CRAN
+  if (packageVersion("rotor") < "0.3.0")
+    skip("rotor < 0.3.0 is no longer supported")
+}
+
+
 
 # AppenderFileRotating -----------------------------------------------------
 
 test_that("AppenderFileRotating: works as expected", {
   if (!is_zipcmd_available())
     skip("Test requires a workings system zip command")
+
+  assert_supported_rotor_version()
 
   tf <- file.path(td, "test.log")
   app <- AppenderFileRotating$new(file = tf, size = "1tb")
@@ -72,12 +80,15 @@ test_that("AppenderFileRotating: works with different backup_dir", {
   if (!is_zipcmd_available())
     skip("Test requires a workings system zip command")
 
+  assert_supported_rotor_version()
+
   tf     <- file.path(td, "test.log")
   bu_dir <- file.path(td, "backups")
 
   # backup_dir does not exist
   expect_error(
-    app <- AppenderFileRotating$new(file = tf, backup_dir = bu_dir)
+    app <- AppenderFileRotating$new(file = tf, backup_dir = bu_dir),
+    class = "DirDoesNotExistError"
   )
 
   # rotating to different dir works
@@ -124,6 +135,9 @@ test_that("AppenderFileRotating: works with different backup_dir", {
 
 
 test_that("AppenderFileRotating: `size` argument works as expected", {
+
+  assert_supported_rotor_version()
+
   #setup
     tf <- file.path(td, "test.log")
     app <- AppenderFileRotating$new(file = tf)$set_size(-1)
@@ -152,6 +166,8 @@ test_that("AppenderFileRotating: `size` argument works as expected", {
 test_that("AppenderFileRotatingDate: works as expected", {
   if (!is_zipcmd_available())
     skip("Test requires a workings system zip command")
+
+  assert_supported_rotor_version()
 
   tf <- file.path(td, "test.log")
   app <- AppenderFileRotatingDate$new(file = tf, size = "1tb")
@@ -213,6 +229,8 @@ test_that("AppenderFileRotatingDate: works with different backup_dir", {
   if (!is_zipcmd_available())
     skip("Test requires a workings system zip command")
 
+  assert_supported_rotor_version()
+
   tf     <- file.path(td, "test.log")
   bu_dir <- file.path(td, "backups")
 
@@ -255,6 +273,8 @@ test_that("AppenderFileRotatingDate: works with different backup_dir", {
 
 
 test_that("AppenderFileRotatingDate: `size` and `age` arguments work as expected", {
+  assert_supported_rotor_version()
+
   #setup
   tf <- file.path(td, "test.log")
   app <- AppenderFileRotatingDate$new(file = tf)$set_age(-1)
@@ -291,6 +311,8 @@ test_that("AppenderFileRotatingDate: `size` and `age` arguments work as expected
 test_that("AppenderFileRotatingTime: works as expected", {
   if (!is_zipcmd_available())
     skip("Test requires a workings system zip command")
+
+  assert_supported_rotor_version()
 
   tf <- file.path(td, "test.log")
   app <- AppenderFileRotatingTime$new(file = tf)
@@ -338,6 +360,8 @@ test_that("AppenderFileRotatingTime: works with different backup_dir", {
   if (!is_zipcmd_available())
     skip("Test requires a workings system zip command")
 
+  assert_supported_rotor_version()
+
   tf     <- file.path(td, "test.log")
   bu_dir <- file.path(td, "backups")
 
@@ -382,6 +406,9 @@ test_that("AppenderFileRotatingTime: works with different backup_dir", {
 
 
 test_that("AppenderFileRotatingTime: `size` and `age` arguments work as expected", {
+
+
+
   #setup
   tf <- file.path(td, "test.log")
   app <- AppenderFileRotatingTime$new(file = tf)$set_age(-1)

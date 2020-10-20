@@ -49,13 +49,13 @@ option manually use \code{\link[=suspend_logging]{suspend_logging()}} and \code{
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://s-fleck.github.io/lgr}
-  \item Report bugs at \url{https://github.com/s-fleck/lgr/issues}
+  \item \url{https://s-fleck.github.io/lgr/}
+  \item Report bugs at \url{https://github.com/s-fleck/lgr/issues/}
 }
 
 }
 \author{
-\strong{Maintainer}: Stefan Fleck \email{stefan.b.fleck@gmail.com} (0000-0003-3344-9851)
+\strong{Maintainer}: Stefan Fleck \email{stefan.b.fleck@gmail.com} (\href{https://orcid.org/0000-0003-3344-9851}{ORCID})
 
 }
 \keyword{internal}

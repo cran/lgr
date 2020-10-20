@@ -1,14 +1,13 @@
 #' Basic Setup for the Logging System
 #'
 #' A quick and easy way to configure the root logger. This is less powerful
-#' then using [`lgr$config()` or `lgr$set_*()`][Logger], but reduces the
+#' then using `lgr$config()` or `lgr$set_*()` (see [Logger]), but reduces the
 #' most common configurations to a single line of code.
 #'
 #' @param file `character` scalar: If not `NULL` a [AppenderFile] will be
 #'   created that logs to this file. If the filename ends in `.jsonl`, the
-#'   Appender will be set up to use the [JSON
-#'   Lines](http://jsonlines.org/) format instead of plain text (see
-#'   [AppenderFile] and [AppenderJson]).
+#'   Appender will be set up to use the [JSON Lines](https://jsonlines.org/)
+#'   format instead of plain text (see [AppenderFile] and [AppenderJson]).
 #' @param fmt `character` scalar: Format to use if `file` is supplied and not a
 #'   `.jsonl` file. If `NULL` it defaults to `"%L [%t] %m"` (see
 #'   [format.LogEvent])
@@ -56,9 +55,11 @@ basic_config <- function(
   console_timestamp_fmt = "%H:%M:%OS3",
   memory  = FALSE
 ){
+  default_fmt = "%L [%t] %m"  # only relevant for triggering warning when logging to json
+
   stopifnot(
     is.null(file) || is_scalar_character(file),
-    is_scalar_character(fmt),
+    is.null(fmt) || is_scalar_character(fmt),
     is_scalar_character(console_fmt),
     is_scalar_character(timestamp_fmt),
     is_threshold(threshold),
@@ -99,14 +100,16 @@ basic_config <- function(
         "Please use `.jsonl` and not `.json` as file extension for JSON log",
         "files. The reason is that that JSON files created",
         "by lgr are not true JSON files but JSONlines files.",
-        "See http://jsonlines.org/ for more infos."
+        "See https://jsonlines.org/ for more infos."
       )
 
     } else if (identical(tolower(ext), "jsonl")){
-      assert (is.null(fmt), "`fmt` must be null if `file` is a '.jsonl' file")
+      if (!is.null(fmt) && !identical(fmt, default_fmt))
+        warning("`fmt` is ignored if `file` is a '.jsonl' file")
+
       l$add_appender(
         name = "file",
-        AppenderJson$new(threshold = NA)
+        AppenderJson$new(file = file, threshold = NA)
       )
 
     } else {
@@ -144,7 +147,7 @@ basic_config <- function(
     if (isTRUE(memory)) memory <- NA
     l$add_appender(name = "memory", AppenderBuffer$new(
       threshold = memory,
-      should_flush = function(event) FALSE
+      should_flush = NULL
     ))
   }
 

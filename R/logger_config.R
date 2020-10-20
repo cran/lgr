@@ -278,22 +278,3 @@ standardize_appenders_list <- function(x){
 
   x
 }
-
-
-
-
-standardize_filters_list <- function(x){
-  if (is.null(x))
-    return(list())
-
-  if (is_filter(x))
-    return(list(x))
-
-  assert(
-    is.list(x) && all(vapply(x, is_filter, logical(1))),
-    "'filters' must be a list Filters or of functions with the single argument",
-    "'event'"
-  )
-
-  x
-}

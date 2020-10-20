@@ -13,11 +13,11 @@ get_logger_glue(name)
 \item{name}{a \code{character} scalar or vector: The qualified name of the Logger
 as a hierarchical value.}
 
-\item{class}{An \link[R6:R6]{R6ClassGenerator} object. Usually \code{Logger} or \code{LoggerGlue}
+\item{class}{An \link[R6:R6Class]{R6ClassGenerator} object. Usually \code{Logger} or \code{LoggerGlue}
 are the only valid choices.}
 
 \item{reset}{a \code{logical} scalar. If \code{TRUE} the logger is reset to an
-unconfigured state. Unlike \code{$config(NULL)} this also replaces a
+unconfigured state. Unlike \verb{$config(NULL)} this also replaces a
 \code{LoggerGlue} with vanilla \code{Logger}. Please note that this will invalidate
 Logger references created before the reset call (see examples).}
 }
@@ -42,10 +42,9 @@ lg$warn("a {.text} message", .text = "warning")
 
 # completely reset 'glue' to an unconfigured vanilla Logger
 get_logger("log/ger", reset = TRUE)
-# this invalidates references to the Logger
+# WARNING: this invalidates existing references to the Logger
 try(lg$info("lg has been invalidated an no longer works"))
 
-# we have to recreate it
 lg <- get_logger("log/ger")
 lg$info("now all is well again")
 }

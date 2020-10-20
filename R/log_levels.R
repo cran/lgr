@@ -188,17 +188,39 @@ colorize_levels <- function(
 
 #' Standardize User-Input Log Levels to Their Integer Representation
 #'
+#' These are helper functions for verifying log levels and converting them from
+#' their character to their integer representations. This is primarily useful
+#' if you want to build your own [Loggers], [Appenders] or [Layouts] and need
+#' to handle log levels in a way that is consistent with \pkg{lgr} .
+#'
 #' @param x a `character` or `integer` scalar, or vector for
 #'   standardize_log_levels
-#' @param log_levels A named character vector of valid log levels
+#' @param log_levels named `integer` vector of valid log levels
 #'
 #' @return An unnamed `integer` vector
+#' @family docs relevant for extending lgr
+#' @export
+#' @examples
 #'
-#' @noRd
+#' standardize_threshold("info")
+#' standardize_threshold("all")
+#' is_threshold("all")
+#' is_threshold("foobar")
+#'
+#' standardize_log_level("info")
+#' # all is a valid threshold, but not a valid log level
+#' try(is.na(standardize_log_level("all")))
+#' is_log_level("all")
+#'
+#' # standardized_log_level intentionally only works with scalars, because many
+#' # functions require scalar log level inputs
+#' try(standardize_log_level(c("info", "fatal")))
+#'
+#' # You can still use standardize_log_levels() (plural) to work with vectors
+#' standardize_log_levels(c("info", "fatal"))
 standardize_threshold <- function(
   x,
-  log_levels = c(getOption("lgr.log_levels"), c("all" = NA_integer_, "off" = 0L)),
-  allow_null = FALSE
+  log_levels = c(getOption("lgr.log_levels"), c("all" = NA_integer_, "off" = 0L))
 ){
   assert(is_scalar(x), "A threshold must be a scalar (a vector of length 1)" )
 
@@ -220,6 +242,8 @@ standardize_threshold <- function(
 
 
 
+#' @rdname standardize_threshold
+#' @export
 is_threshold <- function(x){
   tryCatch(
     {standardize_threshold(x); TRUE},
@@ -230,6 +254,8 @@ is_threshold <- function(x){
 
 
 
+#' @rdname standardize_threshold
+#' @export
 standardize_log_level <- function(
   x,
   log_levels = getOption("lgr.log_levels")
@@ -250,6 +276,8 @@ standardize_log_level <- function(
 
 
 
+#' @rdname standardize_threshold
+#' @export
 is_log_level <- function(x){
   tryCatch(
     {standardize_log_level(x); TRUE},
@@ -260,6 +288,8 @@ is_log_level <- function(x){
 
 
 
+#' @rdname standardize_threshold
+#' @export
 standardize_log_levels <- function(
   x,
   log_levels = getOption("lgr.log_levels")
@@ -279,6 +309,8 @@ standardize_log_levels <- function(
 
 
 
+#' @rdname standardize_threshold
+#' @export
 is_log_levels <- function(x){
   tryCatch(
     {standardize_log_levels(x); TRUE},
@@ -310,8 +342,7 @@ error_msg_log_levels <- function(varname, log_levels){
 #' @param labels a `character` vector of log level labels. Please note that
 #'   log levels are lowercase by default, even if many appenders print them
 #'   in uppercase.
-#' @param log_levels a named `integer` vector, should usually not be set
-#'   manually.
+#' @inheritParams standardize_threshold
 #'
 #' @return a `character` vector for `label_levels()` and an integer vector for
 #'   `unlabel_levels`
@@ -323,7 +354,6 @@ error_msg_log_levels <- function(varname, log_levels){
 #' x <- label_levels(c(seq(0, 600, by = 100), NA))
 #' print(x)
 #' unlabel_levels(x)
-
 label_levels <- function(
   levels,
   log_levels = getOption("lgr.log_levels")

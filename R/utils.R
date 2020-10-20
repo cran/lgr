@@ -109,68 +109,6 @@ ptrunc_col <- function(
 
 
 
-# embedded from tabde
-#' Generate SQL CREATE TABLE statements
-#'
-#' Creates SQL CREATE TABLE statements from a vector of column names and
-#' a vector of column types
-#'
-#' @param tname `character` scalar. Name of target sql table
-#' @param col_names `character` vector. Column names of target sql table
-#' @param col_types `character` scalar. Column types of target sql table.
-#'   Columns of type `NA` will be skipped
-#' @param sql_opts column options of target sql table (for example `NOT NULL`)
-#'
-#' @return a `CREATE TABLE` statement as a `character` scalar
-#' @noRd
-#'
-#' @examples
-#' sql_create_table(
-#'   "example.table",
-#'   c("numbers", "animals"),
-#'   c("integer", "varchar(8)"),
-#'   c("NOT NULL", "")
-#' )
-sql_create_table <- function(
-  tname,
-  col_names,
-  col_types,
-  sql_opts = rep("", length(col_names))
-){
-  # preconditions
-  stopifnot(
-    is_scalar_character(tname),
-    is.character(col_names),
-    is.character(col_types),
-    is_equal_length(col_names, col_types, sql_opts)
-  )
-
-  assert(
-    !anyNA(col_names) && all_are_distinct(col_names),
-    "All `col_names` must be unique and non-`NA`"
-  )
-
-  sql_opts[is.na(sql_opts)] <- ""
-  col_types  <- toupper(col_types)
-
-  # process input
-  if (anyNA(col_types)){
-    message(sprintf(
-      "Skipping %s columns where `col_type` equals `NA`", sum(is.na(col_types))
-    ))
-    col_names <- col_names[!is.na(col_types)]
-    col_types <- col_types[!is.na(col_types)]
-    sql_opts  <- sql_opts[!is.na(col_types)]
-  }
-
-  cols <- paste0(
-    trimws(paste0(col_names, " ", col_types, " ", sql_opts)),
-    collapse = ", "
-  )
-
-  sprintf("CREATE TABLE %s (%s)", tname, cols)
-}
-
 
 
 
@@ -267,5 +205,78 @@ fmt_bytes <- function(
 }
 
 
-isFALSE <- function(x) identical(x, FALSE)
+
+#' Logger Error Conditions
+#'
+#' @param class `character` scalar. The abstract class that was mistakenly
+#'   tried to initialize. The default is to discover the class name
+#'   automatically if called inside `$initialize(){...}` in an [R6::R6] class
+#'   definition
+#'
+#' @return a condition object
+#' @export
+#' @family developer tools
+CannotInitializeAbstractClassError <- function(
+  class = parent.frame(2)[["classes"]]
+){
+  error(
+    paste(fmt_class(class), "is an abstract class and cannot be initlized"),
+    class = c("CannotInitializeAbstractClassError", "NotImplementedError"),
+    call = NULL
+  )
+}
+
+
+
+
+# stricter & faster thant base R version & support for R < 3.5
+isFALSE <- function(x){
+  identical(x, FALSE)
+}
+
+
+
+# like utils::tail.default, but saves you from importing utils.
+last_n <- function(x, n){
+  assert(
+    is_n0(n),
+    "`n` must be a postive integer >= 0, not ", preview_object(n)
+  )
+
+  len <- length(x)
+  n   <- min(n, len)
+  x[seq.int(to = len, length.out = n)]
+}
+
+
+
+
+# conditions --------------------------------------------------------------
+
+condition <- function(message, class, call = NULL, ...) {
+  structure(
+    class = union(class, "condition"),
+    list(message = message, call = call, ...)
+  )
+}
+
+
+
+
+error <- function(message, class, call = NULL, ...) {
+  structure(
+    class = union(class, c("error", "condition")),
+    list(message = message, call = call, ...)
+  )
+}
+
+
+
+
+warning_condition <- function(message, class, call = NULL, ...) {
+  structure(
+    class = union(class, c("warning", "condition")),
+    list(message = message, call = call, ...)
+  )
+}
 # nocov end

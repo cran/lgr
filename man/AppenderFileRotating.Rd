@@ -2,171 +2,197 @@
 % Please edit documentation in R/Appender.R
 \name{AppenderFileRotating}
 \alias{AppenderFileRotating}
-\alias{AppenderFileRotatingDate}
-\alias{AppenderFileRotatingTime}
 \title{Log to a rotating file}
 \description{
 An extension of \link{AppenderFile} that rotates logfiles based on certain
 conditions. Please refer to the documentation of \code{\link[rotor:rotate]{rotor::rotate()}} for
 the meanings of the extra arguments
 }
-\section{Usage}{
-\preformatted{
-x <- AppenderFileRotating$new(file, threshold = NA_integer_, layout =
-  LayoutFormat$new(), filters = NULL, size = Inf, max_backups = Inf,
-  compression = FALSE, backup_dir = dirname(file), create_file = TRUE)
+\seealso{
+\link{AppenderFileRotatingDate}, \link{AppenderFileRotatingTime}, \code{\link[rotor:rotate]{rotor::rotate()}}
 
-x <- AppenderFileRotatingDate$new(file, threshold = NA_integer_, layout =
-  LayoutFormat$new(), filters = NULL, age = Inf, size = -1, max_backups = Inf,
-  compression = FALSE, backup_dir = dirname(file), fmt = "\%Y-\%m-\%d", overwrite
-  = FALSE, create_file = TRUE, cache_backups = TRUE)
-
-x <- AppenderFileRotatingTime$new(file, threshold = NA_integer_, layout =
-  LayoutFormat$new(), filters = NULL, age = Inf, size = -1, max_backups = Inf,
-  compression = FALSE, backup_dir = dirname(file), fmt = "\%Y-\%m-\%d--\%H-\%M-\%S",
-  overwrite = FALSE, create_file = TRUE, cache_backups = TRUE)
-
-x$add_filter(filter, name = NULL)
-x$append(event)
-x$clone(deep = FALSE)
-x$filter(event)
-x$format(color = false, ...)
-x$format(color = FALSE, ...)
-x$prune(max_backups = self$max_backups)
-x$remove_filter(pos)
-x$rotate(force = FALSE, now = Sys.time())
-x$rotate(force = FALSE)
-x$set_age(x)
-x$set_backup_dir(x)
-x$set_cache_backups(x)
-x$set_compression(x)
-x$set_create_file(x)
-x$set_file(file)
-x$set_filters(filters)
-x$set_fmt(x)
-x$set_layout(layout)
-x$set_max_backups(x)
-x$set_overwrite(x)
-x$set_size(x)
-x$set_threshold(level)
-x$show(threshold = NA_integer_, n = 20L)
-
-x$age
-x$backup_dir
-x$backups
-x$cache_backups
-x$compression
-x$create_file
-x$destination
-x$file
-x$filters
-x$fmt
-x$layout
-x$max_backups
-x$overwrite
-x$size
-x$threshold
-
+Other Appenders: 
+\code{\link{AppenderBuffer}},
+\code{\link{AppenderConsole}},
+\code{\link{AppenderFileRotatingDate}},
+\code{\link{AppenderFileRotatingTime}},
+\code{\link{AppenderFile}},
+\code{\link{AppenderTable}},
+\code{\link{Appender}}
 }
+\concept{Appenders}
+\section{Super classes}{
+\code{\link[lgr:Filterable]{lgr::Filterable}} -> \code{\link[lgr:Appender]{lgr::Appender}} -> \code{\link[lgr:AppenderFile]{lgr::AppenderFile}} -> \code{AppenderFileRotating}
 }
-
-\section{Fields}{
-
-
+\section{Active bindings}{
+\if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
-\item{\code{age}, \code{size}, \code{max_backups}, \code{fmt}, \code{overwrite}, \code{compression}, \code{backup_dir}}{
-Please see \code{\link[rotor:rotate]{rotor::rotate()}} for the meaning of these arguments
-(\code{fmt} is passed on as \code{format}).
-}
-
-\item{\code{cache_backups}, \code{set_cache_backups(x)}}{
-\code{TRUE} or \code{FALSE}. If \code{TRUE} (the default) the list of backups is cached,
-if \code{FALSE} it is read from disk every time this appender triggers.
-Caching brings a significant speedup for checking whether to rotate or
-not based on the \code{age} of the last backup, but is only safe if
-there are no other programs/functions (except this appender) interacting
-with the backups.
-}
-
 \item{\code{backups}}{A \code{data.frame} containing information on path, file size,
 etc... on the available backups of \code{file}.}
 }
-
-
-
-\describe{
-\item{\code{file}, \code{set_file(file)}}{\code{character} scalar. Path to the desired log
-file. If the file does not exist it will be created.}
+\if{html}{\out{</div>}}
 }
-
-
-
-\describe{
-\item{\code{threshold}, \code{set_threshold(level)}}{\code{character} or \code{integer} scalar.
-The minimum log level that triggers this logger. See \link{log_levels}}
-\item{\code{layout}, \code{set_layout(layout)}}{a \code{Layout} that will be used for
-formatting the \code{LogEvents} passed to this Appender}
-\item{\code{destination}}{The output destination of the \code{Appender} in
-human-readable form (mainly for print output)}
-}
-
-
-
-\describe{
-\item{\code{filters}, \code{set_filters(filters)}}{a \code{list} that may contain
-\code{functions} or any \R object with a \code{filter()} method. These functions
-must have exactly one argument: \code{event} which will get passed the
-LogEvent when the Filterable's \code{filter()} method is invoked.
-If all of these functions evaluate to \code{TRUE} the LogEvent is passed on.
-Since LogEvents have reference semantics, filters can also be abused to
-modify them before they are passed on. Look at the source code of
-\code{\link[=with_log_level]{with_log_level()}} or \code{\link[=with_log_value]{with_log_value()}} for examples.
-}
-}
-}
-
-\section{Creating a New Appender}{
-
-
-New Appenders are instantiated with \code{<AppenderSubclass>$new()}. For the
-arguments to \code{new()} please refer to the section \emph{Fields}. You can also
-modify those fields after the Appender has been created with setters in the
-form of \code{appender$set_<fieldname>(value)}
-}
-
 \section{Methods}{
+\subsection{Public methods}{
+\itemize{
+\item \href{#method-new}{\code{AppenderFileRotating$new()}}
+\item \href{#method-append}{\code{AppenderFileRotating$append()}}
+\item \href{#method-rotate}{\code{AppenderFileRotating$rotate()}}
+\item \href{#method-prune}{\code{AppenderFileRotating$prune()}}
+\item \href{#method-set_file}{\code{AppenderFileRotating$set_file()}}
+\item \href{#method-set_size}{\code{AppenderFileRotating$set_size()}}
+\item \href{#method-set_max_backups}{\code{AppenderFileRotating$set_max_backups()}}
+\item \href{#method-set_compression}{\code{AppenderFileRotating$set_compression()}}
+\item \href{#method-set_create_file}{\code{AppenderFileRotating$set_create_file()}}
+\item \href{#method-set_backup_dir}{\code{AppenderFileRotating$set_backup_dir()}}
+\item \href{#method-format}{\code{AppenderFileRotating$format()}}
+\item \href{#method-clone}{\code{AppenderFileRotating$clone()}}
+}
+}
+\if{html}{
+\out{<details ><summary>Inherited methods</summary>}
+\itemize{
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="add_filter">}\href{../../lgr/html/Filterable.html#method-add_filter}{\code{lgr::Filterable$add_filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="filter">}\href{../../lgr/html/Filterable.html#method-filter}{\code{lgr::Filterable$filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="remove_filter">}\href{../../lgr/html/Filterable.html#method-remove_filter}{\code{lgr::Filterable$remove_filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="set_filters">}\href{../../lgr/html/Filterable.html#method-set_filters}{\code{lgr::Filterable$set_filters()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Appender" data-id="set_layout">}\href{../../lgr/html/Appender.html#method-set_layout}{\code{lgr::Appender$set_layout()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Appender" data-id="set_threshold">}\href{../../lgr/html/Appender.html#method-set_threshold}{\code{lgr::Appender$set_threshold()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="AppenderFile" data-id="show">}\href{../../lgr/html/AppenderFile.html#method-show}{\code{lgr::AppenderFile$show()}}\out{</span>}
+}
+\out{</details>}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
+\subsection{Method \code{new()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$new(
+  file,
+  threshold = NA_integer_,
+  layout = LayoutFormat$new(),
+  filters = NULL,
+  size = Inf,
+  max_backups = Inf,
+  compression = FALSE,
+  backup_dir = dirname(file),
+  create_file = TRUE
+)}\if{html}{\out{</div>}}
+}
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{append(event)}}{Tell the Appender to process a \link{LogEvent} \code{event}.
-This method is usually not called by the user, but invoked by a
-\link{Logger}
+\item{\code{age, size, max_backups, fmt, overwrite, compression, backup_dir}}{Please see \code{\link[rotor:rotate]{rotor::rotate()}} for the meaning of these arguments}
+}
+\if{html}{\out{</div>}}
 }
 }
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-append"></a>}}
+\if{latex}{\out{\hypertarget{method-append}{}}}
+\subsection{Method \code{append()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$append(event)}\if{html}{\out{</div>}}
+}
 
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-rotate"></a>}}
+\if{latex}{\out{\hypertarget{method-rotate}{}}}
+\subsection{Method \code{rotate()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$rotate(force = FALSE)}\if{html}{\out{</div>}}
+}
 
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-prune"></a>}}
+\if{latex}{\out{\hypertarget{method-prune}{}}}
+\subsection{Method \code{prune()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$prune(max_backups = self$max_backups)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_file"></a>}}
+\if{latex}{\out{\hypertarget{method-set_file}{}}}
+\subsection{Method \code{set_file()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$set_file(file)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_size"></a>}}
+\if{latex}{\out{\hypertarget{method-set_size}{}}}
+\subsection{Method \code{set_size()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$set_size(x)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_max_backups"></a>}}
+\if{latex}{\out{\hypertarget{method-set_max_backups}{}}}
+\subsection{Method \code{set_max_backups()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$set_max_backups(x)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_compression"></a>}}
+\if{latex}{\out{\hypertarget{method-set_compression}{}}}
+\subsection{Method \code{set_compression()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$set_compression(x)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_create_file"></a>}}
+\if{latex}{\out{\hypertarget{method-set_create_file}{}}}
+\subsection{Method \code{set_create_file()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$set_create_file(x)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_backup_dir"></a>}}
+\if{latex}{\out{\hypertarget{method-set_backup_dir}{}}}
+\subsection{Method \code{set_backup_dir()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$set_backup_dir(x)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-format"></a>}}
+\if{latex}{\out{\hypertarget{method-format}{}}}
+\subsection{Method \code{format()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$format(color = false, ...)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-clone}{}}}
+\subsection{Method \code{clone()}}{
+The objects of this class are cloneable with this method.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderFileRotating$clone(deep = FALSE)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{filter(event)}}{Determine whether the LogEvent \code{x} should be passed
-on to Appenders (\code{TRUE}) or not (\code{FALSE}). See also the active binding
-\code{filters}}
-\item{\code{add_filter(filter, name = NULL)}, \code{remove_filter(pos)}}{
-Add or remove a filter. When adding a filter an optional \code{name} can
-be specified. \code{remove_filter()} can remove by position or name (if one
-was specified)
+\item{\code{deep}}{Whether to make a deep clone.}
+}
+\if{html}{\out{</div>}}
 }
 }
 }
-
-\seealso{
-\link{LayoutFormat}, \link{LayoutJson}, \code{\link[rotor:rotate]{rotor::rotate()}}
-
-Other Appenders: \code{\link{AppenderBuffer}},
-  \code{\link{AppenderConsole}}, \code{\link{AppenderDbi}},
-  \code{\link{AppenderFile}}, \code{\link{AppenderGmail}},
-  \code{\link{AppenderJson}},
-  \code{\link{AppenderPushbullet}},
-  \code{\link{AppenderRjdbc}},
-  \code{\link{AppenderSendmail}},
-  \code{\link{AppenderSyslog}},
-  \code{\link{AppenderTable}}, \code{\link{Appender}}
-}
-\concept{Appenders}

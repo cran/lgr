@@ -83,15 +83,67 @@ test_that("AppenderFile: creates empty log file on init", {
 
 
 
+test_that("AppenderFile: $show() works", {
+  tf <- tempfile()
+  on.exit(unlink(tf))
+
+  tf2 <- tempfile()
+  on.exit(unlink(tf2), add = TRUE)
+
+  lg <- get_logger("test")$
+    set_propagate(FALSE)$
+    set_threshold(NA)$
+    set_appenders(list(
+      char = AppenderFile$new(file = tf),
+      num  = AppenderFile$new(file = tf2, layout = LayoutFormat$new("%n %m"))
+    ))
+
+  on.exit(get_logger("test", reset = TRUE), add = TRUE)
+
+  lg$info("foo bar")
+  lg$info("blah blubb")
+  lg$warn("warnwarn")
+  lg$debug("bugbug")
+
+  expect_output({
+    expect_length(lg$appenders$char$show("warn"), 1)
+    expect_length(lg$appenders$char$show("info"), 3)
+    expect_length(lg$appenders$char$show("debug"), 4)
+
+    expect_length(lg$appenders$num$show("warn"), 1)
+    expect_length(lg$appenders$num$show("info"), 3)
+    expect_length(lg$appenders$num$show("debug"), 4)
+  })
+})
+
+
+
+test_that("AppenderFile$data throws an error", {
+  tf <- tempfile()
+  on.exit(unlink(tf))
+
+  lg <- get_logger("test")$
+    set_propagate(FALSE)$
+    set_threshold(NA)$
+    set_appenders(list(file = AppenderFile$new(file = tf)))
+
+  on.exit(get_logger("test", reset = TRUE), add = TRUE)
+
+  lg$info("foo bar")
+  lg$info("blah blubb")
+
+  expect_error(lg$appenders$file$data, class = "CannotParseLogError")
+})
+
 
 # AppenderJson ------------------------------------------------------------
 
-test_that("AppenderJson: $show() works", {
+test_that("AppenderJson: AppenderFile with LayoutJson$show() and $data() work", {
   tf <- tempfile()
   on.exit(unlink(tf))
 
   # with default format
-  app <- AppenderJson$new(file = tf)
+  app <- AppenderFile$new(file = tf, layout = LayoutJson$new())
 
   for (i in 1:10)
     app$append(x)
@@ -103,9 +155,9 @@ test_that("AppenderJson: $show() works", {
 
   r <- utils::capture.output(app$show(threshold = 100))
   expect_identical(r, "")
+
+  expect_identical(nrow(app$data), 10L)
 })
-
-
 
 
 # AppenderConsole ---------------------------------------------------------
@@ -131,169 +183,6 @@ test_that("AppenderConsole: $filter() works", {
 
 
 
-# AppenderDt ----------------------------------------------------------
-
-test_that("AppenderDt: appending multiple rows works", {
-  app <- AppenderDt$new()
-  y <- x$clone()
-  y$level <- seq(100L, 300L, 100L)
-
-  expect_silent(app$append(y))
-
-  expect_true(data.table::is.data.table(app$dt))
-  expect_identical(app$data$level[1:3], y$level)
-  expect_identical(app$data$timestamp[1:3], rep(y$timestamp, 3))
-  expect_identical(app$data$msg[1:3], rep(y$msg, 3))
-  expect_identical(app$data$caller[1:3], rep(NA_character_, 3))
-
-  y <- x$clone()
-  y$level <- 300
-  app$append(y)
-  expect_identical(app$.__enclos_env__$private$.data$.id[1:4], 1:4)
-
-  expect_match(paste(capture.output(app$show()), collapse = ""), "ERROR.*WARN")
-})
-
-
-
-
-test_that("AppenderDt: works with list columns", {
-  app <- AppenderDt$new(
-    prototype = data.table::data.table(
-      .id = NA_integer_,
-      level = NA_integer_,
-      timestamp = Sys.Date(),
-      msg = NA_character_,
-      caller = NA_character_,
-      list = list(list())
-    )
-  )
-
-  e <- LogEvent$new(
-    level = 100,
-    timestamp = Sys.Date(),
-    msg = "blubb",
-    caller = "blubb()",
-    logger = lgr
-  )
-  app$append(e)
-  expect_true(is.null(app$data$list[[1]]))
-
-  e <- LogEvent$new(
-    level = 100,
-    timestamp = Sys.Date(),
-    msg = "blubb",
-    caller = "blubb()",
-    logger = lgr,
-    list = environment()
-  )
-  app$append(e)
-  expect_true(is.environment(app$data$list[[2]]))
-
-  e <- LogEvent$new(
-    level = c(100L, 100L),
-    timestamp = Sys.Date(),
-    msg = "blubb",
-    caller = "blubb()",
-    logger = lgr,
-    list = iris
-  )
-  app$append(e)
-  expect_true(is.data.frame(app$data$list[[3]]))
-  expect_true(is.data.frame(app$data$list[[4]]))
-
-  e <- LogEvent$new(
-    level = 100L,
-    timestamp = Sys.Date(),
-    msg = "blubb",
-    caller = "blubb()",
-    logger = lgr,
-    foo = "bar"
-  )
-  app$append(e)
-  expect_false("foo" %in% names(app$data))
-
-  expect_identical(
-    sapply(app$data$list, class),
-    c("NULL", "environment", "data.frame", "data.frame", "NULL")
-  )
-})
-
-
-
-
-test_that("AppenderDt: .custom works", {
-  app <- AppenderDt$new()
-
-  e <- LogEvent$new(
-    level = 100,
-    timestamp = Sys.Date(),
-    msg = "blubb",
-    caller = "blubb()",
-    logger = lgr
-  )
-
-  app$append(e)
-  expect_true(is_empty(app$data$.custom[[1]]))
-  expect_true(is.list(app$data$.custom[[1]]))
-
-  e$envir <- environment()
-  e$schwupp = "foo"
-  app$append(e)
-  expect_identical(app$data$.custom[[2]]$schwupp, "foo")
-  expect_true(is.environment(app$data$.custom[[2]]$envir))
-
-  # warn if .custom is not a list column
-  expect_warning(
-    app <- AppenderDt$new(prototype = data.table::data.table(
-      .id = NA_integer_,
-      .custom = NA_integer_
-    ))
-  )
-})
-
-
-
-
-test_that("AppenderDt: memory cycling works", {
-  app1 <- AppenderDt$new(buffer_size = 10)
-  replicate(12, app1$append(x))
-  expect_equal(app1$data$.id, 3:12)
-  r1 <- app1$data
-
-  # bulk insert behaves like sepparate inserts
-  app2 <- AppenderDt$new(buffer_size = 10)
-  y <- x$clone()
-  y$msg <- rep(y$msg, 12)
-
-  app2$append(y)
-  expect_equal(app2$data$.id,  3:12)
-  expect_equal(app2$data, r1)
-})
-
-
-
-
-test_that("AppenderDt: default format for show_log() looks like format.LogEvent()", {
-  lg <- get_logger("test")
-  on.exit(lg$config(NULL))
-  lg$add_appender(AppenderDt$new(), "memory")
-
-  xo <- capture.output(lg$fatal("blubb"))
-  xp <- capture.output(lg$appenders$memory$show(n = 1))
-  expect_identical(xo, xp)
-
-  xo <- capture.output(
-    lg$fatal("blubb", foo = "bar", fizz = "buzz", iris = iris)
-  )
-  xp <- capture.output(lg$appenders$memory$show(n = 1))
-  expect_identical(xo, xp)
-
-  expect_length(capture.output(lg$appenders$memory$show(n = 2)), 2)
-})
-
-
-
 # AppenderBuffer ----------------------------------------------------
 # Tests must be executed in sequence
 # setup
@@ -304,7 +193,8 @@ test_that("AppenderDt: default format for show_log() looks like format.LogEvent(
     appenders = list(
       buffer = AppenderBuffer$new(
         appenders = list(file = AppenderFile$new(file = buffer_log)),
-        buffer_size = 10
+        buffer_size = 10,
+        flush_threshold = "fatal"
       )
     ), propagate = FALSE
   )
@@ -318,7 +208,7 @@ test_that("AppenderBuffer: FATAL log level triggers flush", {
 
   # FATAL triggers flush with default filters
   l$fatal(letters[1:3])
-  expect_identical(l$appenders$buffer$buffer_events, list())
+  expect_identical(l$appenders$buffer$buffer_events, event_list())
   expect_match(
     paste(readLines(buffer_log), collapse = "#"),
     "INFO.*A#INFO.*B#INFO.*C#INFO.*D#INFO.*E#INFO.*F#INFO.*G#FATAL.*a#FATAL.*b#FATAL.*c"
@@ -327,7 +217,7 @@ test_that("AppenderBuffer: FATAL log level triggers flush", {
   # Does the next flush flush the correct event?
   l$fatal("x")
   expect_identical(length(readLines(buffer_log)), 11L)
-  expect_identical(l$appenders$buffer$buffer_events, list())
+  expect_identical(l$appenders$buffer$buffer_events, event_list())
   expect_match(paste(readLines(buffer_log), collapse = "#"), ".*A#.*B#.*C#.*a#.*b#.*c#.*x")
 })
 
@@ -339,7 +229,7 @@ test_that("AppenderBuffer: buffer cycling triggers flush", {
   expect_identical(length(l$appenders$buffer$buffer_events), 10L)
   l$info(c("y", "y", "y"))
   expect_identical(length(readLines(buffer_log)), 24L)
-  expect_identical(l$appenders$buffer$buffer_events, list())
+  expect_identical(l$appenders$buffer$buffer_events, event_list())
   expect_match(
     paste(readLines(buffer_log), collapse = "#"),
     ".*A#.*B#.*C#.*a#.*b#.*c#.*x(.*z.*){10}(.*y.*){3}"
@@ -429,7 +319,7 @@ test_that("AppenderBuffer: $add_appender()/$remove_appender()", {
   expect_silent({
     sapp$add_appender(app1)
     sapp$add_appender(app2, "blah")
-    sapp$add_appender(AppenderDt$new(), "blubb")
+    sapp$add_appender(AppenderBuffer$new(), "blubb")
   })
   expect_identical(sapp$appenders[[1]], app1)
   expect_identical(sapp$appenders$blah, app2)
@@ -528,35 +418,57 @@ test_that("AppenderBuffer: Custom $should_flush works", {
 
 
 
-# AppenderSyslog ----------------------------------------------------------
-
-test_that("AppenderSyslog: to_syslog_level works", {
-  skip_if_not_installed("rsyslog")
-  app <- AppenderSyslog$new("myapp")
-
-  expect_identical(
-    app$.__enclos_env__$private$to_syslog_levels(c("fatal", "info", "error", "debug", "warn", "trace")),
-    c("CRITICAL", "INFO", "ERR", "DEBUG", "WARNING", "DEBUG")
+# self contained buffer tests
+test_that("AppenderBuffer: buffer_size 0 works as expected", {
+  l <- Logger$new(
+    "0 buffer test",
+    appenders = list(buffer = AppenderBuffer$new()$
+      set_appenders(list(file = AppenderFile$new(file = tempfile())))),
+    propagate = FALSE
   )
+  on.exit(unlink(l$appenders$buffer$appenders$file$file))
 
-  expect_identical(
-    app$.__enclos_env__$private$to_syslog_levels(c("fatal", "info", "error", "debug", "warn", "trace")),
-    app$.__enclos_env__$private$to_syslog_levels(c(100, 400, 200, 500, 300, 600))
-  )
+  l$appenders$buffer$set_buffer_size(0)
+  expect_silent(l$info(LETTERS[1:3]))
+  expect_length(readLines(l$appenders$buffer$appenders$file$file), 3L)
+
+  expect_silent({
+    expect_identical(nrow(l$appenders$buffer$buffer_df), 0L)
+    expect_identical(nrow(l$appenders$buffer$buffer_dt), 0L)
+    expect_length(l$appenders$buffer$buffer_events, 0L)
+  })
 })
 
 
 
 
-test_that("AppenderSyslog: logging to syslog works", {
-  skip_if_not_installed("rsyslog")
-  msg <- format(Sys.time())
+# utils -------------------------------------------------------------------
 
-  lg <- get_logger("rsyslog/test")$set_propagate(FALSE)
-  on.exit(lg$config(NULL))
-  lg$add_appender(AppenderSyslog$new(), "syslog")
-  lg$info("A test message %s", msg)
+test_that("default_file_reader() works", {
+  tf <- tempfile()
+  on.exit(unlink(tf))
 
-  log = system("cat /var/log/syslog | grep rsyslog/test", intern = TRUE)
-  expect_true(any(grepl(msg, log), fixed = TRUE))
+  expect_error(expect_warning(default_file_reader(tf, threshold = NA, n = 0)))
+
+  writeLines(LETTERS, tf)
+  expect_identical(default_file_reader(tf, threshold = NA, n = 3), c("X", "Y", "Z"))
+
+  writeLines(LETTERS, tf)
+  expect_warning(default_file_reader(tf, threshold = 4, n = 3))
+})
+
+
+
+
+test_that("standardize_should_flush_output() works", {
+  expect_identical(standardize_should_flush_output(TRUE), TRUE)
+  expect_identical(standardize_should_flush_output(FALSE), FALSE)
+  expect_warning(
+    expect_identical(standardize_should_flush_output(NA), FALSE),
+    class = "ValueIsNotBoolError"
+  )
+  expect_warning(
+    expect_identical(standardize_should_flush_output(iris), FALSE),
+    class = "ValueIsNotBoolError"
+  )
 })

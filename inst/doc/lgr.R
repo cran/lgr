@@ -319,26 +319,27 @@ for (nm in month.name[1:8]) lg$debug("%s", nm)
 # An event of level 'error' or 'fatal' triggers flushing of the buffer
 lg$error("But the days grow short when you reach September")
 
-## -----------------------------------------------------------------------------
-# install.packages("RSQLite")
-lg <- get_logger("db_logger")
-lg$
-  set_propagate(FALSE)$
-  add_appender(
-    name = "db", 
-    AppenderDbi$new(
-      conn = DBI::dbConnect(RSQLite::SQLite()),
-      table = "log",
-      buffer_size = 2L
-    )
-  )
-
-lg$info("Logging to databases uses a buffer")
-lg$info("As the buffer size is 2, no insert took place till now")
-lg$appenders$db$show()
-
-lg$info("Now as the buffer is rotated, all events are output to the db")
-lg$appenders$db$show()
+## ---- eval = FALSE------------------------------------------------------------
+#  # install.packages("RSQLite")
+#  # install.packages("lgrExtra")
+#  lg <- get_logger("db_logger")
+#  lg$
+#    set_propagate(FALSE)$
+#    add_appender(
+#      name = "db",
+#      lgrExtra::AppenderDbi$new(
+#        conn = DBI::dbConnect(RSQLite::SQLite()),
+#        table = "log",
+#        buffer_size = 2L
+#      )
+#    )
+#  
+#  lg$info("Logging to databases uses a buffer")
+#  lg$info("As the buffer size is 2, no insert took place till now")
+#  lg$appenders$db$show()
+#  
+#  lg$info("Now as the buffer is rotated, all events are output to the db")
+#  lg$appenders$db$show()
 
 ## -----------------------------------------------------------------------------
 # setup an example function

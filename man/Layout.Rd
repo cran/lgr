@@ -5,31 +5,87 @@
 \alias{Layouts}
 \title{Abstract Class for Layouts}
 \description{
-Abstract classes are exported for developers that want to extend them, they
-are not useful to casual users.  Layouts get a \link{LogEvent} passed down from an
-\link{Appender}, and format them for output. How this formatting works exactly
-varies widely. For example for file or console output the log event is
-usually formatted into a single character line.
+Abstract Class for Layouts
+
+Abstract Class for Layouts
 }
-\section{Creating a New Layout}{
+\details{
+\link{Appenders} pass \link[=LogEvent]{LogEvents} to a Layout which formats it for
+output. For the Layouts included in lgr that means turning the LogEvent
+into a \code{character} string.
 
-
-Layouts are instantiated with \code{<LayoutSubclass>$new()}. For a description of
-the arguments to this function please refer to the Fields section.
+For each Appender exist one more more possible Layouts, but not every Layout
+will work with every Appender. See the package \pkg{lgrExtra} for examples
+for Layouts that return different data types (such as \code{data.frames}) and
+Appenders that can handle them.
 }
+\section{Notes for developers}{
 
-\section{Methods}{
-
-
-\describe{
-\item{\code{format_event(event)}}{format a \link{LogEvent}}
-}
+Layouts may have an additional \verb{$read(file, threshold, n)} method that returns
+a \code{character} vector, and/or an \verb{$parse(file)} method that
+returns a \code{data.frame}. These can be used by Appenders to \verb{$show()} methods
+and \verb{$data} active bindings respectively (see source code of \link{AppenderFile}).
 }
 
 \seealso{
-Other Layouts: \code{\link{LayoutDbi}},
-  \code{\link{LayoutFormat}}, \code{\link{LayoutGlue}},
-  \code{\link{LayoutJson}}
+Other Layouts: 
+\code{\link{LayoutFormat}},
+\code{\link{LayoutGlue}},
+\code{\link{LayoutJson}}
 }
 \concept{Layouts}
-\keyword{internal}
+\section{Methods}{
+\subsection{Public methods}{
+\itemize{
+\item \href{#method-format_event}{\code{Layout$format_event()}}
+\item \href{#method-toString}{\code{Layout$toString()}}
+\item \href{#method-clone}{\code{Layout$clone()}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-format_event"></a>}}
+\if{latex}{\out{\hypertarget{method-format_event}{}}}
+\subsection{Method \code{format_event()}}{
+Format a log event
+
+Function that the Layout uses to transform a \link{LogEvent} into something
+that an \link{Appender} can write to an output destination.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Layout$format_event(event)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{event}}{a \link{LogEvent}}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-toString"></a>}}
+\if{latex}{\out{\hypertarget{method-toString}{}}}
+\subsection{Method \code{toString()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Layout$toString()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-clone}{}}}
+\subsection{Method \code{clone()}}{
+The objects of this class are cloneable with this method.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Layout$clone(deep = FALSE)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{deep}}{Whether to make a deep clone.}
+}
+\if{html}{\out{</div>}}
+}
+}
+}

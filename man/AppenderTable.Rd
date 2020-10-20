@@ -4,89 +4,105 @@
 \alias{AppenderTable}
 \title{Abstract class for logging to tabular structures}
 \description{
-\strong{Abstract classes} are exported for package developers that want to extend
-them, they cannot be instantiated directly.
+\strong{NOTE}: This is an \emph{abstract class}. Abstract classes cannot be instantiated
+directly, but are exported for package developers that want to extend lgr -
+for example by creating their own \link[=Appender]{Appenders} or \link[=Layout]{Layouts}.
+Please refer to the \emph{see also} section for actual implementations of this
+class.
 
-AppenderTable is extended by Appenders that write to a data source that
-can be interpreted as tables, (usually a \code{data.frame}). Examples are
-\link{AppenderDbi}, \link{AppenderRjdbc} and \link{AppenderDt}.
+AppenderTable is extended by Appenders that write to a data
+source that can be interpreted as tables, (usually a \code{data.frame}). Examples
+are \code{AppenderDbi}, \code{AppenderRjdbc} and \code{AppenderDt} from the
+\href{https://github.com/s-fleck/lgrExtra}{lgrExtra} package.
 }
-\section{Fields}{
-
-
-\describe{
-\item{\code{data}}{Get the log recorded by this \code{Appender} as a \code{data.frame}}
-}
-
-
-
-\describe{
-\item{\code{threshold}, \code{set_threshold(level)}}{\code{character} or \code{integer} scalar.
-The minimum log level that triggers this logger. See \link{log_levels}}
-\item{\code{layout}, \code{set_layout(layout)}}{a \code{Layout} that will be used for
-formatting the \code{LogEvents} passed to this Appender}
-\item{\code{destination}}{The output destination of the \code{Appender} in
-human-readable form (mainly for print output)}
-}
-
-
-
-\describe{
-\item{\code{filters}, \code{set_filters(filters)}}{a \code{list} that may contain
-\code{functions} or any \R object with a \code{filter()} method. These functions
-must have exactly one argument: \code{event} which will get passed the
-LogEvent when the Filterable's \code{filter()} method is invoked.
-If all of these functions evaluate to \code{TRUE} the LogEvent is passed on.
-Since LogEvents have reference semantics, filters can also be abused to
-modify them before they are passed on. Look at the source code of
-\code{\link[=with_log_level]{with_log_level()}} or \code{\link[=with_log_value]{with_log_value()}} for examples.
-}
-}
-}
-
-\section{Methods}{
-
-
-\describe{
-\item{\code{show(n, threshold)}}{Show the last \code{n} log entries with a
-log level bellow \code{threshold}.}
-}
-
-
-\describe{
-\item{\code{append(event)}}{Tell the Appender to process a \link{LogEvent} \code{event}.
-This method is usually not called by the user, but invoked by a
-\link{Logger}
-}
-}
-
-
-\describe{
-\item{\code{filter(event)}}{Determine whether the LogEvent \code{x} should be passed
-on to Appenders (\code{TRUE}) or not (\code{FALSE}). See also the active binding
-\code{filters}}
-\item{\code{add_filter(filter, name = NULL)}, \code{remove_filter(pos)}}{
-Add or remove a filter. When adding a filter an optional \code{name} can
-be specified. \code{remove_filter()} can remove by position or name (if one
-was specified)
-}
-}
-}
-
 \seealso{
-Other abstract classes: \code{\link{AppenderDigest}},
-  \code{\link{AppenderMail}}, \code{\link{AppenderMemory}},
-  \code{\link{Filterable}}
+Other abstract classes: 
+\code{\link{AppenderMemory}},
+\code{\link{Appender}},
+\code{\link{Filterable}}
 
-Other Appenders: \code{\link{AppenderBuffer}},
-  \code{\link{AppenderConsole}}, \code{\link{AppenderDbi}},
-  \code{\link{AppenderFileRotating}},
-  \code{\link{AppenderFile}}, \code{\link{AppenderGmail}},
-  \code{\link{AppenderJson}},
-  \code{\link{AppenderPushbullet}},
-  \code{\link{AppenderRjdbc}},
-  \code{\link{AppenderSendmail}},
-  \code{\link{AppenderSyslog}}, \code{\link{Appender}}
+Other Appenders: 
+\code{\link{AppenderBuffer}},
+\code{\link{AppenderConsole}},
+\code{\link{AppenderFileRotatingDate}},
+\code{\link{AppenderFileRotatingTime}},
+\code{\link{AppenderFileRotating}},
+\code{\link{AppenderFile}},
+\code{\link{Appender}}
 }
 \concept{Appenders}
 \concept{abstract classes}
+\section{Super classes}{
+\code{\link[lgr:Filterable]{lgr::Filterable}} -> \code{\link[lgr:Appender]{lgr::Appender}} -> \code{AppenderTable}
+}
+\section{Active bindings}{
+\if{html}{\out{<div class="r6-active-bindings">}}
+\describe{
+\item{\code{data}}{\code{character} scalar. Contents of the table, parsed to a
+\code{data.frame}.}
+
+\item{\code{data}}{\code{character} scalar. Like \verb{$data}, but returns a \code{data.table}
+instead (requires the \strong{data.table} package).}
+}
+\if{html}{\out{</div>}}
+}
+\section{Methods}{
+\subsection{Public methods}{
+\itemize{
+\item \href{#method-new}{\code{AppenderTable$new()}}
+\item \href{#method-show}{\code{AppenderTable$show()}}
+\item \href{#method-format}{\code{AppenderTable$format()}}
+}
+}
+\if{html}{
+\out{<details ><summary>Inherited methods</summary>}
+\itemize{
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="add_filter">}\href{../../lgr/html/Filterable.html#method-add_filter}{\code{lgr::Filterable$add_filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="filter">}\href{../../lgr/html/Filterable.html#method-filter}{\code{lgr::Filterable$filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="remove_filter">}\href{../../lgr/html/Filterable.html#method-remove_filter}{\code{lgr::Filterable$remove_filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="set_filters">}\href{../../lgr/html/Filterable.html#method-set_filters}{\code{lgr::Filterable$set_filters()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Appender" data-id="append">}\href{../../lgr/html/Appender.html#method-append}{\code{lgr::Appender$append()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Appender" data-id="set_layout">}\href{../../lgr/html/Appender.html#method-set_layout}{\code{lgr::Appender$set_layout()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Appender" data-id="set_threshold">}\href{../../lgr/html/Appender.html#method-set_threshold}{\code{lgr::Appender$set_threshold()}}\out{</span>}
+}
+\out{</details>}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
+\subsection{Method \code{new()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderTable$new(...)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-show"></a>}}
+\if{latex}{\out{\hypertarget{method-show}{}}}
+\subsection{Method \code{show()}}{
+Show recent log entries
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderTable$show(threshold = NA_integer_, n = 20L)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{threshold}}{an \code{integer} or \code{character} \link[=log_level]{threshold}.
+Only show events with a log level at or below this threshold.}
+
+\item{\code{n}}{a positive \code{integer} scalar. Show at most that many entries}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-format"></a>}}
+\if{latex}{\out{\hypertarget{method-format}{}}}
+\subsection{Method \code{format()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{AppenderTable$format(color = FALSE, ...)}\if{html}{\out{</div>}}
+}
+
+}
+}

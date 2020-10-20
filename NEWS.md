@@ -1,6 +1,59 @@
+# lgr 0.4.1
+
+* Moved more complex Appenders to package 
+  [lgrExtra](https://github.com/s-fleck/lgrExtra). This includes database 
+  Appenders, email and push notifications and AppenderDt (in-memory 
+  `data.tables`).
+  
+* `AppenderFile$show()` can now filter log files formatted by LayoutFormat 
+  by log level. Be aware that this just `greps` through the file and therefore
+  will return false positives on lines where the log message contains strings 
+  that can be interpreted as log levels.
+  
+* `AppenderFile$show()` and `AppenderFile$data` now dispatches to 
+  `Layout$read()` and `Layout$parse()`. This makes it possible to tie 
+  reading/parsing of log files to Layouts.
+
+* Loggers gain a `list_log()` method. See https://github.com/s-fleck/joblog  for 
+  an R package that leverages this feature to create custom log event types for 
+  tracking the status of cron jobs. 
+  
+* Export more utility functions that are useful for creating custom Appenders; 
+  such as `standardize_threshold()` and `event_list()`.
+  
+* AppenderBuffer now defaults to `flush_threshold = NULL` 
+  (never flush because of the log level of an event)
+  
+* `basic_config()` now works as documented for .jsonl files
+
+* AppenderMemory gains a `$clear()` method that clears the buffer without 
+  sending the events to it's attached appenders
+
+* LayoutJson gains a `timestamp_fmt` field that can be used for custom 
+  timestamp formats (#34)
+  
+* added `toString.LogEvent()` for compact representations of LogEvents
+
+* lgr is now automatically tested for all major R version >= 3.2.0
+
+* AppenderMemory/AppenderBuffer: `flush_threshold` is now independent of
+  `should_flush` function. `default_should_flush()` is no longer necessary
+  and has been removed.
+  
+* Updated AppenderFileRotating and co for compatibility with **rotor** 0.3.0
+
+* Most errors now have appropriate subclasses
+
+* `Logger$log()` dispatches to all appenders - even if some throw an error -
+  instead of aborting after the first Appender that throws an error
+  
+* complete rewrite of the documentation to use the new roxgen2 features for
+  R6 classes.
+
+
 # lgr 0.3.4
 
-* Hotfix for compat with R < 3.6.0 (#32)
+* Hotfix for compatibility with R < 3.6.0 (#32)
 
 
 # lgr 0.3.3

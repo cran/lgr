@@ -8,7 +8,7 @@ status](https://www.r-pkg.org/badges/version/lgr)](https://cran.r-project.org/pa
 [![Lifecycle:
 maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://www.tidyverse.org/lifecycle/#maturing)
 [![Travis build
-status](https://travis-ci.org/s-fleck/lgr.svg?branch=master)](https://travis-ci.org/s-fleck/lgr)
+status](https://travis-ci.com/s-fleck/lgr.svg?branch=master)](https://travis-ci.com/s-fleck/lgr)
 [![Codecov test
 coverage](https://codecov.io/gh/s-fleck/lgr/branch/master/graph/badge.svg)](https://codecov.io/gh/s-fleck/lgr?branch=master)
 
@@ -23,7 +23,7 @@ Users that have not worked with R6 classes before, will find configuring
 Loggers a bit strange and verbose, but care was taken to keep the syntax
 for common logging tasks and interactive usage simple and concise. User
 that have experience with [shiny](https://github.com/rstudio/shiny),
-[plumber](https://github.com/trestletech/plumber), [python
+[plumber](https://github.com/rstudio/plumber), [python
 logging](https://docs.python.org/3/library/logging.html) or [Apache
 Log4j](https://logging.apache.org/log4j/2.x/) will feel at home. User
 that are proficient with R6 classes will also find it easy to extend and
@@ -65,13 +65,13 @@ vignette.
 
 ``` r
 lgr$fatal("A critical error")
-#> FATAL [08:25:07.182] A critical error
+#> FATAL [17:25:32.336] A critical error
 lgr$error("A less severe error")
-#> ERROR [08:25:07.211] A less severe error
+#> ERROR [17:25:32.401] A less severe error
 lgr$warn("A potentially bad situation")
-#> WARN  [08:25:07.221] A potentially bad situation
+#> WARN  [17:25:32.421] A potentially bad situation
 lgr$info("iris has %s rows", nrow(iris))
-#> INFO  [08:25:07.223] iris has 150 rows
+#> INFO  [17:25:32.425] iris has 150 rows
 
 # the following log levels are hidden by default
 lgr$debug("A debug message")
@@ -85,9 +85,9 @@ appender to log to a file with little effort.
 tf <- tempfile()
 lgr$add_appender(AppenderFile$new(tf, layout = LayoutJson$new()))
 lgr$info("cars has %s rows", nrow(cars))
-#> INFO  [08:25:07.239] cars has 50 rows
+#> INFO  [17:25:32.458] cars has 50 rows
 cat(readLines(tf))
-#> {"level":400,"timestamp":"2019-06-11 08:25:07","logger":"root","caller":"eval","msg":"cars has 50 rows"}
+#> {"level":400,"timestamp":"2020-10-17 17:25:32","logger":"root","caller":"eval","msg":"cars has 50 rows"}
 ```
 
 By passing a named argument to `info()`, `warn()`, and co you can log
@@ -97,10 +97,10 @@ logfiles that are machine as well as (somewhat) human readable.
 
 ``` r
 lgr$info("loading cars", "cars", rows = nrow(cars), cols = ncol(cars))
-#> INFO  [08:25:07.258] loading cars {rows: 50, cols: 2}
+#> INFO  [17:25:32.502] loading cars {rows: 50, cols: 2}
 cat(readLines(tf), sep = "\n")
-#> {"level":400,"timestamp":"2019-06-11 08:25:07","logger":"root","caller":"eval","msg":"cars has 50 rows"}
-#> {"level":400,"timestamp":"2019-06-11 08:25:07","logger":"root","caller":"eval","msg":"loading cars","rows":50,"cols":2}
+#> {"level":400,"timestamp":"2020-10-17 17:25:32","logger":"root","caller":"eval","msg":"cars has 50 rows"}
+#> {"level":400,"timestamp":"2020-10-17 17:25:32","logger":"root","caller":"eval","msg":"loading cars","rows":50,"cols":2}
 ```
 
 For more examples please see the package
@@ -135,13 +135,10 @@ file.remove(logfile)
 
 ## Development status
 
-The api of lgr is stable and safe for use. The internal implementation
-of the database logging features still needs some refinement, and if you
-are using lgr with a database, I would be grateful for any kind of
-feedback.\[1\]
-
-lgr is currently very actively developed, and feature requests are
-encouraged.
+lgr in general is stable and safe for use, but some Appenders are still
+experimental. This especially concerns database appenders which are
+available from the sepparate package
+[lgrExtra](https://github.com/s-fleck/lgrExtra).
 
 ## Dependencies
 
@@ -160,34 +157,48 @@ Appenders you actually want to use. Care was taken to choose packages
 that are slim, stable, have minimal dependencies, and are well
 maintained :
 
-Extra appenders (and layouts):
+Extra appenders (in the main package):
 
   - [jsonlite](https://github.com/jeroen/jsonlite) for JSON logging via
     `LayoutJson`. JSON is a popular plaintext based file format that is
     easy to read for humans and machines alike.
+
   - [rotor](https://github.com/s-fleck/rotor) for log rotation via
     AppenderFileRotating and co.
+
+  - [data.table](https://github.com/Rdatatable/) for fast in-memory
+    logging with `AppenderDt`, and also by all database / DBI Appenders.
+
+  - [glue](https://glue.tidyverse.org/) for a more flexible formatting
+    syntax via LoggerGlue and LayoutGlue.
+
+Extra appenders via [lgrExtra](https://github.com/s-fleck/lgrExtra):
+
   - [DBI](https://github.com/r-dbi/DBI) for logging to databases. lgr is
     confirmed to work with the following backends:
+    
       - [RSQLite](https://github.com/r-dbi/RSQLite),
       - [RMariaDB](https://github.com/r-dbi/RMariaDB) for MariaDB and
         MySQL,
       - [RPostgres](https://cran.r-project.org/package=RPostgres),
       - [RJDBC](https://github.com/s-u/RJDBC) for DB2, and
       - [odbc](https://github.com/r-dbi/odbc) also for DB2.
+    
     In theory all DBI compliant database packages should work. If you
     are using lgr with a database backend, please report your (positive
     and negative) experiences, as database support is still somewhat
     experimental.
-  - [data.table](https://github.com/Rdatatable/) for fast in-memory
-    logging with `AppenderDt`, and also by all database / DBI Appenders.
+
   - [gmailr](https://cran.r-project.org/package=gmailr) or
-    [sendmailR](https://cran.r-project.org/package=sendmailR) for email
+
+  - [sendmailR](https://cran.r-project.org/package=sendmailR) for email
     notifications.
+
   - [RPushbullet](https://github.com/eddelbuettel/rpushbullet) for push
     notifications.
-  - [glue](https://glue.tidyverse.org/) for a more flexible formatting
-    syntax via LoggerGlue and LayoutGlue.
+
+  - [Rsyslog](https://cran.r-project.org/package=rsyslog) for logging to
+    syslog on POSIX-compatible systems.
 
 Other extra features:
 
@@ -232,10 +243,5 @@ to post a feature request on the issue tracker.
 
 ## Acknowledgement
 
-  - [Inkscape](https://inkscape.org/) for the hex sticker
-  - [draw.io](https://draw.io/) for the flow chart in the vignette
-
-<!-- end list -->
-
-1.  The only database logging I can currently test extensively is DB2
-    via RJDBC. I do not recommend this setup if you have other options.
+  - [diagrams.net](https://app.diagrams.net/) for the flow chart in the
+    vignette

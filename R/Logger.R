@@ -1,181 +1,16 @@
 #' Loggers
 #'
-#' A Logger produces a [LogEvent] that contains the log message along with
-#' metadata (timestamp, calling function) and dispatches it to one or several
-#' [Appenders] which are responsible for the output (console, file, ...) of the
-#' event. **lgr** comes with a single pre-configured Logger called the
+#' A Logger produces a [LogEvent] that contains a log message along with
+#' metadata (timestamp, calling function, ...) and dispatches it to one or
+#' more [Appenders] which are responsible for the output (console, file, ...)
+#' of the event. **lgr** comes with a single pre-configured Logger called the
 #' `root Logger` that can be accessed via `lgr$<...>`. Instantiation of new
-#' Loggers is only necessary if you want to take advantage of hierarchical
-#' logging as outlined in `vignette("lgr", package = "lgr")`.
-#'
-#'
-#' @section Usage:
-#'
-#' ```
-#' # Cannonical way to initialize a new Logger (see "Creating Loggers")
-#' lg <- get_logger("logger")
-#' ```
-#'
-#' @eval r6_usage(Logger, name = "lg", header = "# R6 constructor (not recommended for productive use)")
-#'
-#' @section Creating Loggers:
-#'
-#' If you are a package developer you should define a new Logger for each
-#' package, but you do not need to configure it. Usually only the root logger
-#' needs to be configured (new Appenders added/removed, Layouts modified,
-#' etc...).
-#'
-#' Loggers should never be instantiated directly with `Logger$new()` but rather
-#' via `get_logger("name")`. If `"name"` does not exist, a new
-#' Logger with that name will be created, otherwise the function returns a
-#' Reference to the existing Logger.
-#'
-#' The `name` is potentially a `/` separated hierarchical value like
-#' `foo/bar/baz`. Loggers further down the hierarchy are children of the loggers
-#' above. (This mechanism does not work of the Logger is initialized with
-#' `Logger$new()`)
-#'
-#' All calls to `get_logger()` with the same name return the same Logger
-#' instance. This means that Logger instances never need to be passed between
-#' different parts of an application.
-#'
-#' If you just want to log to an additional output (like a log file), you want
-#' a new [Appender], not a new Logger.
-#'
-#' @inheritSection Filterable Fields
-#' @section Fields:
-#'
-#' You can modify the fields of an existing Logger with
-#' `logger$set_<fieldname>(value)` (see examples). Another way to configure
-#' loggers is via its `$config()` method.
-#'
-#' \describe{
-#'   \item{`appenders`, `set_appenders(x)`}{A single [Appender] or a `list`
-#'     thereof. Appenders control the output of a Logger. Be aware that a Logger
-#'     also inherits the Appenders of its ancestors
-#'     (see `vignette("lgr", package = "lgr")` for more info about Logger
-#'     inheritance structures).}
-#'
-#'   \item{`threshold`, `set_threshold(level)`}{`character` or `integer` scalar.
-#'   The minimum [log level][log_levels] that triggers this Logger}
-#'
-#'   \item{`exception_handler`, `set_exception_handler()`}{a `function` that
-#'   takes a single argument `e`. The function used to handle errors that occur
-#'   during logging. Defaults to demoting errors to [warnings].}
-#'
-#'   \item{`propagate`, `set_propagate()`}{`TRUE` or `FALSE`. Should LogEvents
-#'   be passed on to the appenders of the ancestral Loggers?}
-#'  }
-#'
-#'
-#' @section Read-Only Bindings:
-#'
-#' In addition to the active bindings used to access the fields described above,
-#' Loggers also have the following additional read-only bindings:
-#'
-#' \describe{
-#'   \item{`name`}{`character` scalar. A hierarchical value
-#'     (separated by `"/"``) that indicates the loggers name and its ancestors.
-#'     If a logger is created with [get_logger()] uniqueness of the name is
-#'     enforced.
-#'   }
-#'
-#'   \item{`ancestry`}{A named `logical` vector of containing
-#'   the propagate value of each Logger upper the inheritance tree. The names
-#'   are the names of the appenders. `ancestry` is an S3 class with a custom
-#'   `format()`/`print()` method, so if you want to use the plain logical
-#'   vector use `unclass(lg$ancestry)`}
-#'
-#'   \item{`inherited_appenders`}{A `list` of all inherited
-#'   appenders from ancestral Loggers of the current Logger}
-#'
-#'   \item{`last_event`}{The last LogEvent produced by the current Logger}
-#' }
-#'
-#' @inheritSection Filterable Methods
-#' @section Methods:
-#'
-#'
-#' \describe{
-#'   \item{`fatal(msg, ..., caller = get_caller(-8L))`}{Logs a message with
-#'   level `fatal` on this logger. If there are *unnamed* arguments in `...`,
-#'   they will be passed to `base::sprintf()` along with message. Named
-#'   arguments will be passed as custom fields to [LogEvent]. If there are named
-#'   arguments the names must be unique. `caller` refers to the name of the
-#'   calling function and if specified manually must be a `character` scalar.}
-#'
-#'   \item{`error(msg, ..., caller = get_caller(-8L))`}{Logs a message with level `error` on this logger.
-#'     The arguments are interpreted as for `fatal()`.}
-#'
-#'   \item{`warn(msg, ..., caller = get_caller(-8L))`}{Logs a message with level `warn` on this logger.
-#'     The arguments are interpreted as for `fatal()`.}
-#'
-#'   \item{`info(msg, ..., caller = get_caller(-8L))`}{Logs a message with level `info` on this logger.
-#'     The arguments are interpreted as for `fatal()`.}
-#'
-#'   \item{`debug(msg, ..., caller = get_caller(-8L))`}{Logs a message with level `debug` on this logger.
-#'     The arguments are interpreted as for `fatal()`.}
-#'
-#'   \item{`trace(msg, ..., caller = get_caller(-8L))`}{Logs a message with level `trace` on this logger.
-#'   The arguments are interpreted as for `fatal()`.}
-#'
-#'   \item{`log(level, msg, ..., timestamp, caller)`}{
-#'     If the `level` passes the Logger `threshold` a new [LogEvent]
-#'     with `level`, `msg`, `timestamp` and `caller` is created. Unnamed
-#'     arguments in `...` will be combined with `msg` via `base::sprintf()`.
-#'     Named arguments in `...` will be passed on to `LogEvent$new()` as custom
-#'     fields. If no unnamed arguments are present, `msg` will *not* be passed
-#'     to `sprintf()`, so in that case you do not have to escape `"%"`
-#'     characters.
-#'     If the new LogEvent passes this Loggers filters, it will be dispatched
-#'     to the relevant [Appenders] and checked against their thresholds and
-#'     filters.
-#'   }
-#'
-#'   \item{`config(cfg, file, text, list`}{Load a Logger
-#'     configuration. `cfg` can be either
-#'   * a special list object with any or all of the the following elements:
-#'     `appenders`, `threshold`, `filters`, `propagate`, `exception_handler`,
-#'   * the path to a `YAML`/`JSON` config file,
-#'   * a `character` scalar containing `YAML`,
-#'   *  `NULL` (to reset the logger config to the default/unconfigured state)
-#'
-#'   The arguments `file`, `text` and `list` can be used as an alternative to
-#'     `cfg` that  enforces that the  supplied  argument is of the specified
-#'     type. See [logger_config] for details.
-#'   }
-#'
-#'   \item{`add_appender(appender, name = NULL)`, `remove_appender(pos)`}{
-#'     Add or remove an [Appender]. Supplying a `name` is optional but
-#'     recommended. After adding an Appender with
-#'     `logger$add_appender(AppenderConsole$new(), name = "console")` you can
-#'      refer to it via `logger$appenders$console`. `remove_appender()` can
-#'      remove an Appender by position or name.
-#'    }
-#'
-#'    \item{`spawn(...)`}{Spawn a child Logger.
-#'      `get_logger("foo/bar")$spawn("baz")` is equivalent to
-#'      `get_logger("foo/bar/baz")`, but can be convenient for programmatic use
-#'      when the name of the parent Logger is not known.}
-#' }
-#'
-#'
-#' @section LoggerGlue:
-#'
-#' `LoggerGlue` uses [glue::glue()] instead of [base::sprintf()] to construct
-#' log messages. **glue** is a very well designed package for
-#' string interpolation. It makes composing log messages
-#' more flexible and comfortable at the price of an additional dependency and
-#' slightly less performance than `sprintf()`.
-#'
-#' `glue()` lets you define temporary named variables inside the call.
-#' As with the normal Logger, these named arguments get turned into custom
-#' fields; however, you can suppress this behaviour by making named argument
-#' start with a `"."`. Please refer to `vignette("lgr", package = "lgr")` for
-#' examples.
+#' Loggers is done with [get_logger()]. It is advisable to instantiate a
+#' separate Logger with a descriptive name for each package/script in which
+#' you use \pkg{lgr}.
 #'
 #' @name Logger
-#' @aliases Loggers LoggerGlue
+#' @aliases Loggers
 #' @include Filterable.R
 #' @include log_levels.R
 #' @seealso [glue](https://glue.tidyverse.org/)
@@ -280,8 +115,33 @@ Logger <- R6::R6Class(
 
   # public --------------------------------------------------------------------
   public = list(
-
     # +- methods --------------------------------------------------------------
+
+    #' @description
+    #'
+    #' **Loggers should never be instantiated directly with `Logger$new()`** but
+    #' rather via [`get_logger("name")`][get_logger]. This way new Loggers are
+    #' registered in a global namespace which ensures uniqueness and
+    #' facilitates inheritance between Loggers. If `"name"` does not exist, a
+    #' new Logger with that name will be created, otherwise the function returns
+    #' a Reference to the existing Logger.
+    #'
+    #' `name` is potentially a `"/"` separated hierarchical value like
+    #' `foo/bar/baz`. Loggers further down the hierarchy are descendants of the
+    #' loggers above and (by default) inherit `threshold` and `Appenders` from
+    #' their ancestors.
+    #'
+    #' @note
+    #' If you are a package developer you should define a new Logger for each
+    #' package, but you do not need to configure it. The user of the package
+    #' should decide how and where to output logging, usually by configuring the
+    #' root Logger (new Appenders added/removed, Layouts modified, etc...).
+    #'
+    #' @param name,appenders,threshold,filters,exception_handler,propagate
+    #'   See section Active bindings.
+    #'
+    #' @seealso [get_logger()]
+    #'
     initialize = function(
       name = "(unnamed logger)",
       appenders = list(),
@@ -312,6 +172,26 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @description Log an event.
+    #'
+    #' If `level` passes the Logger's `threshold` a new [LogEvent] with `level`,
+    #' `msg`, `timestamp` and `caller` is created.  If the new LogEvent also
+    #' passes the Loggers [Filters][EventFilter], it is be dispatched to the
+    #' relevant [Appenders].
+    #'
+    #' @param level a `character` or `integer` scalar. See [log_levels].
+    #'
+    #' @param msg `character`. A log message. If unnamed arguments are supplied
+    #' in `...`, `msg` is passed on to [base::sprintf()] (which means `"%"` have
+    #' to be escaped), otherwise `msg` is left as-is.
+    #'
+    #' @param ... *unnamed* arguments in `...` must be `character` scalars and
+    #' are passed to [base::sprintf()]. *Named* arguments must have unique names
+    #' but can be arbitrary \R objects that are passed to [`LogEvent$new()`][LogEvent] and
+    #' will be turned into custom fields.
+    #'
+    #' @param timestamp [POSIXct]. Timestamp of the event.
+    #' @param caller a `character` scalar. The name of the calling function.
     log = function(
       level,
       msg,
@@ -388,23 +268,30 @@ Logger <- R6::R6Class(
 
         if (get("filter", envir = self)(event)){
           for (app in unlist(mget(c("appenders", "inherited_appenders"), self), recursive = FALSE)){
-            app_thresh <- get("threshold", envir = app)
-            if (
-              (is.na(app_thresh) || get("level", envir = event) <= app_thresh) &&
-              get("filter", envir = app)(event)
-            ){
-              get("append", envir = app)(event)
+            tryCatch({
+              app_thresh <- get("threshold", envir = app)
+              if (
+                (is.na(app_thresh) || get("level", envir = event) <= app_thresh) &&
+                get("filter", envir = app)(event)
+              ){
+                get("append", envir = app)(event)
+              }
+            }, error = function(e) {
+              e$appender <- app
+              get("handle_exception", envir = self)(e)
             }
-          }
+          )
         }
+      }
 
         invisible(msg)
       },
-      error = get("handle_exception", envir = self)
+        error = get("handle_exception", envir = self)
       )
     },
 
-
+    #' @description Log an Event fatal priority
+    #' @param msg,...,caller see `$log()`
     fatal = function(msg, ..., caller = get_caller(-8L)){
       if (identical(get("threshold", envir = self) < 100L, TRUE))
         return(invisible())
@@ -419,6 +306,8 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @description Log an Event error priority
+    #' @param msg,...,caller see `$log()`
     error = function(msg, ..., caller = get_caller(-8L)){
       if (identical(get("threshold", envir = self) < 200L, TRUE))
         return(invisible())
@@ -433,6 +322,8 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @description Log an Event warn priority
+    #' @param msg,...,caller see `$log()`
     warn = function(msg, ..., caller = get_caller(-8L)){
       if (identical(get("threshold", envir = self) < 300L, TRUE))
         return(invisible())
@@ -447,6 +338,8 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @description Log an Event info priority
+    #' @param msg,...,caller see `$log()`
     info = function(msg, ..., caller = get_caller(-8L)){
       if (identical(get("threshold", envir = self) < 400L, TRUE))
         return(invisible())
@@ -461,6 +354,8 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @description Log an Event debug priority
+    #' @param msg,...,caller see `$log()`
     debug = function(msg, ..., caller = get_caller(-8L)){
       if (identical(get("threshold", envir = self) < 500L, TRUE))
         return(invisible())
@@ -475,6 +370,8 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @description Log an Event trace priority
+    #' @param msg,...,caller see `$log()`
     trace = function(msg, ..., caller = get_caller(-8L)){
       if (identical(get("threshold", envir = self) < 600L, TRUE))
         return(invisible())
@@ -489,6 +386,39 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @description
+    #' `list_log()` is a shortcut for `do.call(Logger$log, x)`.
+    #' See \url{https://github.com/s-fleck/joblog} for an R package that
+    #' leverages this feature to create custom log event types for tracking
+    #' the status of cron jobs.
+    #'
+    #' @param x a named `list` that must at least contain the named elements
+    #'   `level` and `timestamp`
+    #'
+    #' @examples
+    #' lg <- get_logger("test")
+    #' lg$list_log(list(level = 400, msg = "example"))
+    list_log = function(x){
+      do.call(self$log, x)
+    },
+
+
+
+    #' @description Load a Logger configuration.
+    #'
+    #' @param cfg
+    #' * a special `list` object with any or all of the the following elements:
+    #'     `appenders`, `threshold`, `filters`, `propagate`, `exception_handler`,
+    #'
+    #' * the path to a `YAML`/`JSON` config file,
+    #'
+    #' * a `character` scalar containing `YAML/JSON`,
+    #'
+    #' * `NULL` (to reset the logger config to the default/unconfigured state)
+    #'
+    #' @param file,text,list can be used as an alternative to
+    #'   `cfg` that  enforces that the  supplied  argument is of the specified
+    #'   type. See [logger_config] for details.
     config = function(
       cfg,
       file,
@@ -543,6 +473,18 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @description Add an Appender to the Logger
+    #'
+    #' @param appender a single [Appender]
+    #' @param name a `character` scalar. Optional but recommended.
+    #'
+    #' @examples
+    #' lg <- get_logger("test")
+    #' lg$add_appender(AppenderConsole$new(), name = "myconsole")
+    #' lg$appenders[[1]]
+    #' lg$appenders$myconsole
+    #' lg$remove_appender("myconsole")
+    #' lg$config(NULL)  # reset config
     add_appender = function(
       appender,
       name = NULL
@@ -557,6 +499,10 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @param pos `integer` index or `character` name of the Appender(s) to
+    #' remove
+    #'
+    #' @description remove an appender
     remove_appender = function(
       pos
     ){
@@ -585,11 +531,24 @@ Logger <- R6::R6Class(
     },
 
 
-    handle_exception = function(...){
-      private$.exception_handler(...)
+    #' @description
+    #' To prevent errors in the logging logic from crashing the whole script,
+    #' Loggers pass errors they encounter to an exception handler. The default
+    #' behaviour is to demote errors to [warnings]. See also
+    #' `set_exception_handler()`.
+    #'
+    #' @param expr expression to be evaluated.
+    handle_exception = function(expr){
+      private$.exception_handler(expr)
     },
 
 
+    #' @description Set the exception handler of a logger
+    #'
+    #' @param fun a `function` with the single argument `e` (an error [condition])
+    #'
+    #' @examples
+    #' lgr$info(stop("this produces a warning instead of an error"))
     set_exception_handler = function(fun){
       assert(is.function(fun))
       private$.exception_handler <- fun
@@ -597,6 +556,9 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @description Should a Logger propagate events to the Appenders of its ancestors?
+    #' @param x `TRUE` or `FALSE`. Should [LogEvents] be passed on to the appenders
+    #' of the ancestral Loggers?
     set_propagate = function(x){
       assert(is_scalar_bool(x))
       private$.propagate <- x
@@ -604,17 +566,25 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @description Set the minimum log level of events that a Logger should process
+    #'
+    #' @param level `character` or `integer` scalar. The minimum
+    #' [log level][log_levels] that triggers this Logger
     set_threshold = function(level){
-
-      if (!is.null(level)){
+      if (!is.null(level))
         level <- standardize_threshold(level)
-      }
 
       private[[".threshold"]] <- level
       invisible(self)
     },
 
 
+    #' @description Set the Logger's Appenders
+    #'
+    #' @param x single [Appender] or a `list` thereof. Appenders control the
+    #'   output of a Logger. Be aware that a Logger also inherits the Appenders
+    #'   of its ancestors (see `vignette("lgr", package = "lgr")` for more info
+    #'   about Logger inheritance).
     set_appenders = function(x){
       x <- standardize_appenders_list(x)
       private[[".appenders"]] <- list()
@@ -626,7 +596,14 @@ Logger <- R6::R6Class(
     },
 
 
-    spawn = function(name, ...){
+    #' @description Spawn a child Logger.
+    #' This is very similar to using [get_logger()], but
+    #' can be useful in some cases where Loggers are created programmatically
+    #'
+    #' @param name `character` vector. Name of the child logger
+    #'  `get_logger("foo/bar")$spawn("baz")` is equivalent
+    #'   to `get_logger("foo/bar/baz")`
+    spawn = function(name){
       get_logger(c(private[[".name"]], name))
     }
   ),
@@ -634,19 +611,39 @@ Logger <- R6::R6Class(
 
   # active bindings ---------------------------------------------------------
   active = list(
+
+    #' @field name A `character` scalar. The unique name of each logger,
+    #' which also includes the names of its ancestors (separated by `/`).
     name = function(){
       paste(get(".name", envir = private), collapse = "/")
     },
 
+
+    #' @field threshold `integer` scalar. The threshold of the `Logger`, or if it
+    #' `NULL` the threshold it inherits from its closest ancestor with a
+    #' non-`NULL` threshold
+    threshold = function() {
+      res <- get(".threshold", envir = private)
+      if (is.null(res)){
+        get("threshold", envir = get("parent", envir = self))
+      } else {
+        res
+      }
+    },
+
+
+    #' @field propagate A `TRUE` or `FALSE`. The unique name of each logger,
+    #' which also includes the names of its ancestors (separated by `/`).
     propagate = function(){
       get(".propagate", envir = private)
     },
 
-    last_event = function() {
-      get(".last_event", envir = private)
-    },
 
-
+    #' @field ancestry A named `logical` vector of containing the propagate value
+    #'   of each Logger upper the inheritance tree. The names are the names of
+    #'   the appenders. `ancestry` is an S3 class with a custom
+    #'   `format()`/`print()` method, so if you want to use the plain logical
+    #'   vector use `unclass(lg$ancestry)`
     ancestry = function(){
       nm  <- get(".name", envir = private)
       res <- logical(length(nm))
@@ -662,6 +659,7 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @field parent a `Logger`. The direct ancestor of the `Logger`.
     parent = function() {
       nm <- get(".name", envir = private)
 
@@ -673,16 +671,20 @@ Logger <- R6::R6Class(
     },
 
 
-    threshold = function() {
-      res <- get(".threshold", envir = private)
-      if (is.null(res)){
-        get("threshold", envir = get("parent", envir = self))
-      } else {
-        res
-      }
+    #' @field last_event The last LogEvent produced by the current Logger
+    last_event = function() {
+      get(".last_event", envir = private)
     },
 
 
+    #' @field appenders a `list` of all [Appenders] of the Logger
+    appenders = function() {
+      get(".appenders", envir = private)
+    },
+
+
+    #' @field inherited_appenders A `list` of all appenders that the Logger
+    #'   inherits from its ancestors
     inherited_appenders = function(){
       if (get(".propagate", envir = private)){
         p <- get("parent", envir = self)
@@ -690,7 +692,7 @@ Logger <- R6::R6Class(
           return(NULL)
 
         unlist(
-          mget(c("appenders", "inherited_appenders"), envir = p),
+          unname(mget(c("appenders", "inherited_appenders"), envir = p)),
           recursive = FALSE
         )
       } else {
@@ -699,13 +701,10 @@ Logger <- R6::R6Class(
     },
 
 
+    #' @field exception_handler a `function`. See `$set_exception_handler` and
+    #'   `$handle_exception`
     exception_handler = function() {
       get(".exception_handler", envir = private)
-    },
-
-
-    appenders = function() {
-      get(".appenders", envir = private)
     }
   ),
 
@@ -718,10 +717,12 @@ Logger <- R6::R6Class(
       invisible(self)
     },
 
+    #' @description
+    #' Ensure all Appenders attached to a Logger are destroyed before the
+    #' Logger, so that the Appender's finalize method can access the logger if
+    #' it wants to
     finalize = function(){
-      # ensure appenders are destroyed before logger is destroyed so that the
-      # finalize method of the appenders can still access the logger if it
-      # wants to
+
       for (i in rev(seq_along(self$appenders))){
         self$remove_appender(i)
         gc()
@@ -745,6 +746,20 @@ Logger <- R6::R6Class(
 
 # LoggerGlue --------------------------------------------------------------
 
+#' LoggerGlue
+#'
+#' `LoggerGlue` uses [glue::glue()] instead of [base::sprintf()] to construct
+#' log messages. **glue** is a very well designed package for
+#' string interpolation. It makes composing log messages
+#' more flexible and comfortable at the price of an additional dependency and
+#' slightly less performance than `sprintf()`.
+#'
+#' `glue()` lets you define temporary named variables inside the call.
+#' As with the normal Logger, these named arguments get turned into custom
+#' fields; however, you can suppress this behaviour by making named argument
+#' start with a `"."`. Please refer to `vignette("lgr", package = "lgr")` for
+#' examples.
+#'
 #' @export
 LoggerGlue <- R6::R6Class(
   "LoggerGlue",
@@ -853,6 +868,8 @@ LoggerGlue <- R6::R6Class(
           "Can only utilize vectorized logging if log level is the same for all entries"
         )
 
+        msg <- glue::glue(..., .envir = .envir)
+
         # Check if LogEvent should be created
         if (
           identical(level[[1]] > get("threshold", envir = self), TRUE) ||
@@ -861,9 +878,6 @@ LoggerGlue <- R6::R6Class(
           return(invisible(msg))
         }
 
-        # init
-        # the do.call is so that `...` gets evaluated in the correct environment
-        msg <- glue::glue( ..., .envir = .envir)
         force(caller)
 
         if (missing(...)){
@@ -898,24 +912,36 @@ LoggerGlue <- R6::R6Class(
 
         if (get("filter", envir = self)(event)){
           for (app in unlist(mget(c("appenders", "inherited_appenders"), self), recursive = FALSE)){
-            app_thresh <- get("threshold", envir = app)
-            if (
-              (is.na(app_thresh) || get("level", envir = event) <= app_thresh) &&
-              get("filter", envir = app)(event)
-            ){
-              get("append", envir = app)(event)
+            tryCatch({
+              app_thresh <- get("threshold", envir = app)
+              if (
+                (is.na(app_thresh) || get("level", envir = event) <= app_thresh) &&
+                get("filter", envir = app)(event)
+              ){
+                get("append", envir = app)(event)
+              }
+            }, error = function(e) {
+              e$appender <- app
+              get("handle_exception", envir = self)(e)
             }
-          }
+          )
         }
-
+      }
         invisible(msg)
       },
-      error = get("handle_exception", envir = self)
+        error = get("handle_exception", envir = self)
       )
     },
 
 
-    spawn = function(name, ...){
+    list_log = function(x){
+       # TODO: Workaround until we have a better implementation of list_log
+      names(x)[names(x) == "msg"] <- ""
+      do.call(self$log, x)
+    },
+
+
+    spawn = function(name){
       get_logger_glue(c(private[[".name"]], name))
     }
   )
@@ -971,3 +997,208 @@ LoggerRoot <- R6::R6Class(
 is_Logger <- function(x){
   inherits(x, "Logger")
 }
+
+
+
+
+# print.Logger ------------------------------------------------------------
+
+#' Print a Logger Object
+#'
+#' The `print()` method for Loggers displays the most important aspects of
+#' the Logger.
+#'
+#'
+#' @param x any \R Object
+#' @param color `TRUE` or `FALSE`: Output with color? Requi<- the Package
+#'   **crayon**
+#' @param ... ignored
+#'
+#' @return
+#'   `print()` returns `x` (invisibly), `format()` returns a `character` vector.
+#' @export
+#'
+#' @examples
+#' # print most important details of logger
+#' print(lgr)
+
+print.Logger <- function(
+  x,
+  color = requireNamespace("crayon", quietly = TRUE),
+  ...
+){
+  assert(is_scalar_bool(color))
+  cat(format(x, color = color), sep = "\n")
+  invisible(x)
+}
+
+
+
+
+#' @export
+#' @rdname print.Logger
+format.Logger = function(
+  x,
+  color = FALSE,
+  ...
+){
+  assert(is_scalar_bool(color))
+  assert(is_scalar_bool(color))
+  if (!color) style_subtle <- identity
+
+  thr <- fmt_threshold(x$threshold, type = "character")
+
+  if (is_threshold_inherited(x)){
+    thr <- style_subtle(thr)
+  }
+
+
+  header <- paste(
+    paste0("<", class(x)[[1]], "> [", thr, "]"),
+    format(x$ancestry, color = color)
+  )
+
+  appenders <- appender_summary(x$appenders)
+  inherited_appenders  <- appender_summary(x$inherited_appenders)
+
+  ind <- "  "
+  res <- header
+
+  if (!is.null(appenders)){
+    res <-c(
+      res, "",
+      "appenders:", paste0(ind, appenders)
+    )
+  }
+
+  if (!is.null(inherited_appenders)){
+    res <- c(
+      res, "",
+      "inherited appenders:", paste0(ind, inherited_appenders)
+    )
+  }
+
+  res
+}
+
+
+
+appender_summary <- function(x){
+  dd <- lapply(x, srs_appender)
+
+  if (!length(x)){
+    return(NULL)
+  }
+
+  if (is.null(names(x))){
+    names(x) <- ""
+  }
+
+
+  dd <- do.call(rbind, dd)
+
+  if (is.null(dd)) return(NULL)
+
+  dd$name <- ifelse(
+    is.na(names(x)) | is_blank(names(x)),
+    paste0("[[", seq_len(length(x)), "]]"),
+    names(x)
+  )
+
+  dd$destination <- ifelse(
+    !is_blank(dd$destination),
+    paste("->", dd$destination),
+    ""
+  )
+
+  with(
+    dd,
+    paste0(
+      pad_right(name), ": ",
+      pad_right(class), " [",
+      pad_left(fmt_threshold(threshold, type = "character")), "] ",
+      destination
+    )
+  )
+}
+
+
+
+# single-row-summary
+srs_appender <- function(x){
+  data.frame(
+    class = fmt_class(class(x)[[1]]),
+    threshold = x$threshold,
+    destination = x$destination
+  )
+}
+
+
+
+
+#' @description
+#' You can also print just the `ancestry` of a Logger which can be accessed with
+#' with `logger$ancestry()`. This returns a named `character` vector whose
+#' names correspond to the names of the Loggers `logger` inherits from. The
+#' `TRUE`/`FALSE` status of its elements correspond to the `propagate` values of
+#' these Loggers.
+#'
+#' @rdname print.Logger
+#' @export
+#'
+#' @examples
+#' # print only the ancestry of a logger
+#' lg <- get_logger("AegonV/Aerys/Rheagar/Aegon")
+#' get_logger("AegonV/Aerys/Rheagar")$set_propagate(FALSE)
+#'
+#' print(lg$ancestry)
+#' unclass(lg$ancestry)
+
+print.ancestry <- function(
+  x,
+  color = requireNamespace("crayon", quietly = TRUE),
+  ...
+){
+  assert(is_scalar_bool(color))
+  cat(format(x, color = color), "\n")
+  invisible(x)
+}
+
+
+
+
+#' @export
+#' @rdname print.Logger
+format.ancestry <- function(
+  x,
+  color = FALSE,
+  ...
+){
+  assert(is_scalar_bool(color))
+  sps <- rep("/", length(x))
+  nms <- names(x)
+
+  style <- identity
+
+  if (color){
+    for (i in rev(seq_along(x))){
+      nms[[i]] <- style(nms[[i]])
+      sps[[i]] <- style(sps[[i]])
+      if (!x[[i]]){
+        style <- style_subtle
+      }
+    }
+  }
+
+  sps[length(sps)] <- ""
+
+  paste0(nms, sps, collapse = "")
+}
+
+
+
+
+is_threshold_inherited <- function(x){
+  is.null(x[[".__enclos_env__"]][["private"]][[".threshold"]])
+}
+

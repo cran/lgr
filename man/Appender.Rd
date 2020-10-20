@@ -5,104 +5,126 @@
 \alias{Appenders}
 \title{Appenders}
 \description{
-Appenders are assigned to \link{Loggers} and manage the output of the \link{LogEvents}
-to a destination (such as the console or a text file). An Appender has a
-single \link{Layout} that tells it how to format the LogEvent. For details
-please refer to the documentations of the specific Appenders.
+Appenders are attached to \link{Loggers} and manage the output of the
+\link{LogEvents} to a destination - such as the console or a text file. An
+Appender has a single \link{Layout} that tells it how to format the LogEvent. For
+details please refer to the documentations of the specific Appenders.
 
-The Appender class itself \strong{is not designed for direct usage}, but it is the
-basis on which all other Appenders are built. Please see the \strong{see also}
-section towards the end of this document a list of available Appenders.
+Additional Appenders that support a wide range of output destinations -
+such as databases, email, push-notifications or Linux syslog - are available
+from the package \href{https://github.com/s-fleck/lgrExtra}{lgrExtra}.
+
+\strong{NOTE}: This is an \emph{abstract class}. Abstract classes cannot be instantiated
+directly, but are exported for package developers that want to extend lgr -
+for example by creating their own \link[=Appender]{Appenders} or \link[=Layout]{Layouts}.
+Please refer to the \emph{see also} section for actual implementations of this
+class.
 }
-\section{Usage}{
-\preformatted{
-x <- Appender$new(layout = Layout$new(), threshold = NA_integer_)
-
-x$add_filter(filter, name = NULL)
-x$append(event)
-x$filter(event)
-x$format(color = FALSE, ...)
-x$remove_filter(pos)
-x$set_filters(filters)
-x$set_layout(layout)
-x$set_threshold(level)
-
-x$destination
-x$filters
-x$layout
-x$threshold
-
-}
-}
-
-\section{Creating a New Appender}{
-
-
-New Appenders are instantiated with \code{<AppenderSubclass>$new()}. For the
-arguments to \code{new()} please refer to the section \emph{Fields}. You can also
-modify those fields after the Appender has been created with setters in the
-form of \code{appender$set_<fieldname>(value)}
-}
-
-\section{Fields}{
-
-
-\describe{
-\item{\code{threshold}, \code{set_threshold(level)}}{\code{character} or \code{integer} scalar.
-The minimum log level that triggers this logger. See \link{log_levels}}
-\item{\code{layout}, \code{set_layout(layout)}}{a \code{Layout} that will be used for
-formatting the \code{LogEvents} passed to this Appender}
-\item{\code{destination}}{The output destination of the \code{Appender} in
-human-readable form (mainly for print output)}
-}
-
-
-
-\describe{
-\item{\code{filters}, \code{set_filters(filters)}}{a \code{list} that may contain
-\code{functions} or any \R object with a \code{filter()} method. These functions
-must have exactly one argument: \code{event} which will get passed the
-LogEvent when the Filterable's \code{filter()} method is invoked.
-If all of these functions evaluate to \code{TRUE} the LogEvent is passed on.
-Since LogEvents have reference semantics, filters can also be abused to
-modify them before they are passed on. Look at the source code of
-\code{\link[=with_log_level]{with_log_level()}} or \code{\link[=with_log_value]{with_log_value()}} for examples.
-}
-}
-}
-
-\section{Methods}{
-
-\describe{
-\item{\code{append(event)}}{Tell the Appender to process a \link{LogEvent} \code{event}.
-This method is usually not called by the user, but invoked by a
-\link{Logger}
-}
-}
-
-
-\describe{
-\item{\code{filter(event)}}{Determine whether the LogEvent \code{x} should be passed
-on to Appenders (\code{TRUE}) or not (\code{FALSE}). See also the active binding
-\code{filters}}
-\item{\code{add_filter(filter, name = NULL)}, \code{remove_filter(pos)}}{
-Add or remove a filter. When adding a filter an optional \code{name} can
-be specified. \code{remove_filter()} can remove by position or name (if one
-was specified)
-}
-}
-}
-
 \seealso{
-Other Appenders: \code{\link{AppenderBuffer}},
-  \code{\link{AppenderConsole}}, \code{\link{AppenderDbi}},
-  \code{\link{AppenderFileRotating}},
-  \code{\link{AppenderFile}}, \code{\link{AppenderGmail}},
-  \code{\link{AppenderJson}},
-  \code{\link{AppenderPushbullet}},
-  \code{\link{AppenderRjdbc}},
-  \code{\link{AppenderSendmail}},
-  \code{\link{AppenderSyslog}}, \code{\link{AppenderTable}}
+Other abstract classes: 
+\code{\link{AppenderMemory}},
+\code{\link{AppenderTable}},
+\code{\link{Filterable}}
+
+Other Appenders: 
+\code{\link{AppenderBuffer}},
+\code{\link{AppenderConsole}},
+\code{\link{AppenderFileRotatingDate}},
+\code{\link{AppenderFileRotatingTime}},
+\code{\link{AppenderFileRotating}},
+\code{\link{AppenderFile}},
+\code{\link{AppenderTable}}
 }
 \concept{Appenders}
+\concept{abstract classes}
 \keyword{internal}
+\section{Super class}{
+\code{\link[lgr:Filterable]{lgr::Filterable}} -> \code{Appender}
+}
+\section{Active bindings}{
+\if{html}{\out{<div class="r6-active-bindings">}}
+\describe{
+\item{\code{destination}}{The output destination of the \code{Appender} in human-readable form. This
+is mainly used when printing information about the Appender itself.}
+}
+\if{html}{\out{</div>}}
+}
+\section{Methods}{
+\subsection{Public methods}{
+\itemize{
+\item \href{#method-new}{\code{Appender$new()}}
+\item \href{#method-append}{\code{Appender$append()}}
+\item \href{#method-set_threshold}{\code{Appender$set_threshold()}}
+\item \href{#method-set_layout}{\code{Appender$set_layout()}}
+\item \href{#method-format}{\code{Appender$format()}}
+}
+}
+\if{html}{
+\out{<details open ><summary>Inherited methods</summary>}
+\itemize{
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="add_filter">}\href{../../lgr/html/Filterable.html#method-add_filter}{\code{lgr::Filterable$add_filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="filter">}\href{../../lgr/html/Filterable.html#method-filter}{\code{lgr::Filterable$filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="remove_filter">}\href{../../lgr/html/Filterable.html#method-remove_filter}{\code{lgr::Filterable$remove_filter()}}\out{</span>}
+\item \out{<span class="pkg-link" data-pkg="lgr" data-topic="Filterable" data-id="set_filters">}\href{../../lgr/html/Filterable.html#method-set_filters}{\code{lgr::Filterable$set_filters()}}\out{</span>}
+}
+\out{</details>}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
+\subsection{Method \code{new()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Appender$new(layout = Layout$new(), threshold = NA_integer_)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-append"></a>}}
+\if{latex}{\out{\hypertarget{method-append}{}}}
+\subsection{Method \code{append()}}{
+Process a \link{LogEvent} \code{event}. This method is usually not
+called by the user, but invoked by a \link{Logger}
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Appender$append(event)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_threshold"></a>}}
+\if{latex}{\out{\hypertarget{method-set_threshold}{}}}
+\subsection{Method \code{set_threshold()}}{
+Set the minimum log level that triggers this Appender. See
+\code{\link[=threshold]{threshold()}} for examples
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Appender$set_threshold(level)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{level}}{\code{character} or \code{integer} scalar log level. See \link{log_levels}.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-set_layout"></a>}}
+\if{latex}{\out{\hypertarget{method-set_layout}{}}}
+\subsection{Method \code{set_layout()}}{
+Set the \code{Layout} that this Appender will use for formatting
+\code{LogEvents}
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Appender$set_layout(layout)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-format"></a>}}
+\if{latex}{\out{\hypertarget{method-format}{}}}
+\subsection{Method \code{format()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Appender$format(color = FALSE, ...)}\if{html}{\out{</div>}}
+}
+
+}
+}
