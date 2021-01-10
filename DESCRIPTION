@@ -1,7 +1,7 @@
 Type: Package
 Package: lgr
 Title: A Fully Featured Logging Framework
-Version: 0.4.1
+Version: 0.4.2
 Authors@R: 
     person(given = "Stefan",
            family = "Fleck",
@@ -21,7 +21,7 @@ BugReports: https://github.com/s-fleck/lgr/issues/
 Depends: R (>= 3.2.0)
 Imports: R6 (>= 2.4.0)
 Suggests: cli, covr, crayon, data.table, desc, future, future.apply,
-        glue, jsonlite, knitr, rmarkdown, rotor (>= 0.3.0), rprojroot,
+        glue, jsonlite, knitr, rmarkdown, rotor (>= 0.3.5), rprojroot,
         testthat, tibble, tools, utils, whoami, yaml
 VignetteBuilder: knitr
 Encoding: UTF-8
@@ -35,7 +35,7 @@ Collate: 'Filterable.R' 'utils-sfmisc.R' 'utils.R' 'Appender.R'
         'use_logger.R' 'utils-formatting.R' 'utils-logging.R'
         'utils-rd.R' 'utils-rotor.R'
 NeedsCompilation: no
-Packaged: 2020-10-20 07:49:59 UTC; fleck
+Packaged: 2021-01-10 19:38:53 UTC; hoelk
 Author: Stefan Fleck [aut, cre] (<https://orcid.org/0000-0003-3344-9851>)
 Repository: CRAN
-Date/Publication: 2020-10-20 20:00:06 UTC
+Date/Publication: 2021-01-10 22:30:09 UTC
