@@ -1,3 +1,17 @@
+# lgr 0.4.3
+
+* `logger_index()` returns a `data.frame` with metadata on all registered
+  loggers (#47) (thanks @Fuco1)
+  
+* export new `string_repr()` generic that is used to layout R objects for 
+  formatted log message output (#48, thanks @mmuurr)
+  
+* The `$log()` method of Logger and LoggerGlue now unpacks conditions (except
+  if they are supplied as a named argument) (#45, thanks @mmuurr)
+  
+* Fix some timezone related tests for CRAN
+
+
 # lgr 0.4.2
 
 * Deprecated the `create_file` argument of `AppenderFileRotating*`. This
@@ -60,7 +74,7 @@
 * `Logger$log()` dispatches to all appenders - even if some throw an error -
   instead of aborting after the first Appender that throws an error
   
-* complete rewrite of the documentation to use the new roxgen2 features for
+* complete rewrite of the documentation to use the new roxygen2 features for
   R6 classes.
 
 
