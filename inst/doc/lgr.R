@@ -393,3 +393,14 @@ without_logging({
 }
 
 
+## ---- eval = FALSE------------------------------------------------------------
+#  # install.packages("this.path")
+#  
+#  lg <- get_logger("srcfile")
+#  lg$add_filter(function(event){
+#    tryCatch({
+#      event$srcfile <- this.path::this.path()
+#    }, error = function(e) NULL)
+#    TRUE
+#  })
+

@@ -55,7 +55,7 @@ LogEvent <- R6::R6Class(
       msg = NA,
       ...
     ){
-      assert(inherits(logger, "Logger"))
+      assert(inherits(logger, "Logger"), "Logger must be a <Logger> object, not a ", class_fmt(logger))
 
       # assign has less overhead than [[ and event creation needs to be as fast
       # as possible
@@ -130,6 +130,66 @@ LogEvent <- R6::R6Class(
 
 
 # coercion ---------------------------------------------------
+
+#' Coerce objects to LogEvent
+#'
+#' Smartly coerce \R objects that look like LogEvents to LogEvents. Mainly
+#' useful for developing Appenders.
+#'
+#' **Note**: `as_LogEvent.data.frame()` only supports single-row `data.frames`
+#'
+#' @param x any supported \R object
+#' @param ... currently ignored
+#'
+#' @return a [LogEvent]
+#' @family docs relevant for extending lgr
+#' @export
+as_LogEvent <- function(x, ...){
+  UseMethod("as_LogEvent")
+}
+
+
+
+
+#' @rdname as_LogEvent
+#' @export
+as_LogEvent.list <- function(x, ...){
+
+  if (is.null(x[["logger"]])){
+    x[["logger"]] <- get_logger()
+  } else if (is.character(x[["logger"]])){
+    x[["logger"]] <- get_logger(x[["logger"]])
+  }
+
+  # smartly rename timestamp fields from ElasticSearch/Logstash
+  if (!"timestamp" %in% names(x) && "@timestamp" %in% names(x)){
+    names(x)[names(x) == "@timestamp"] <- "timestamp"
+  }
+
+  x[["level"]] <- standardize_log_level(x[["level"]])
+
+  do.call(LogEvent$new, x)
+}
+
+
+
+
+#' @rdname as_LogEvent
+#' @export
+as_LogEvent.data.frame <- function(
+  x,
+  ...
+){
+  assert(
+    identical(nrow(x), 1L),
+    "`as_LogEvent()` only supports single-row data.frames. Try `as_event_list()` instead"
+  )
+
+  as_LogEvent(unclass(x))
+}
+
+
+
 
 #' Coerce LogEvents to Data Frames
 #'
@@ -380,22 +440,31 @@ format.LogEvent <- function(
       "%n" = colorize_levels(x$level, colors),
       "%l" = colorize_levels(lvls, colors),
       "%L" = colorize_levels(toupper(lvls), colors),
-      "%k" = colorize_levels(substr(lvls, 1, 1), colors),
-      "%K" = colorize_levels(substr(toupper(lvls), 1, 1), colors),
+      "%k" = colorize_levels(lvls, colors, transform = function(.) strtrim(., 1)),
+      "%K" = colorize_levels(lvls, colors, transform = function(.) toupper(strtrim(., 1))),
       "%t" = format(get("timestamp", envir = x), format = timestamp_fmt),
       "%m" = get("msg", envir = x),
       "%c" = get("caller", envir = x),
       "%g" = get("logger", envir = x),
       "%p" = Sys.getpid(),
       "%f" = format_custom_fields(get_custom_fields(x), color = length(colors)),
-      "%j" = jsonlite::toJSON(get_custom_fields(x), auto_unbox = TRUE),
+      "%j" = format_custom_fields_json(get_custom_fields(x)),
       tokens[[i]]
     )
   }
 
-  do.call(paste0, res)
+  sub("[ \t\r]*$", "", do.call(paste0, res))
 }
 
+
+
+format_custom_fields_json <- function(x){
+  if (length(x)){
+    jsonlite::toJSON(x, auto_unbox = TRUE)
+  } else {
+    ""
+  }
+}
 
 
 

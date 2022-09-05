@@ -39,7 +39,7 @@ Layout <- R6::R6Class(
       toString(event)
     },
 
-    toString = function() "<empty>"
+    toString = function() fmt_class(class(self)[[1]])
   )
 )
 
@@ -80,7 +80,7 @@ LayoutFormat <- R6::R6Class(
   inherit = Layout,
   public = list(
     initialize = function(
-      fmt = "%L [%t] %m",
+      fmt = "%L [%t] %m %j",
       timestamp_fmt = "%Y-%m-%d %H:%M:%OS3",
       colors = NULL,
       pad_levels = "right"
@@ -244,7 +244,7 @@ LayoutGlue <- R6::R6Class(
   inherit = Layout,
   public = list(
     initialize = function(
-      fmt = "{pad_right(colorize_levels(toupper(level_name)), 5)} [{timestamp}] msg"
+      fmt = "{pad_right(colorize_levels(toupper(level_name)), 5)} [{timestamp}] {msg}"
     ){
       assert_namespace("glue")
       self$set_fmt(fmt)

@@ -1,7 +1,7 @@
 Type: Package
 Package: lgr
 Title: A Fully Featured Logging Framework
-Version: 0.4.3
+Version: 0.4.4
 Authors@R: 
     person(given = "Stefan",
            family = "Fleck",
@@ -25,7 +25,7 @@ Suggests: cli, covr, crayon, data.table, desc, future, future.apply,
         testthat, tibble, tools, utils, whoami, yaml
 VignetteBuilder: knitr
 Encoding: UTF-8
-RoxygenNote: 7.1.1.9000
+RoxygenNote: 7.2.1.9000
 Collate: 'Filterable.R' 'utils-sfmisc.R' 'utils.R' 'Appender.R'
         'Filter.R' 'log_levels.R' 'LogEvent.R' 'Layout.R' 'Logger.R'
         'basic_config.R' 'default_functions.R' 'event_list.R'
@@ -35,7 +35,7 @@ Collate: 'Filterable.R' 'utils-sfmisc.R' 'utils.R' 'Appender.R'
         'utils-formatting.R' 'utils-logging.R' 'utils-rd.R'
         'utils-rotor.R'
 NeedsCompilation: no
-Packaged: 2021-09-16 09:41:55 UTC; hoelk
+Packaged: 2022-09-05 21:01:13 UTC; stefan.fleck
 Author: Stefan Fleck [aut, cre] (<https://orcid.org/0000-0003-3344-9851>)
 Repository: CRAN
-Date/Publication: 2021-09-16 10:20:07 UTC
+Date/Publication: 2022-09-05 22:00:02 UTC
